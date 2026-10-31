@@ -23,7 +23,7 @@
     background:radial-gradient(ellipse at 50% 45%,#0d120d 0%,#050705 70%);transition:opacity 1.6s ease;padding:6vh 8vw;box-sizing:border-box}
   .screen.hide{opacity:0;pointer-events:none}
   #start{background:#050705}
-  #bgc{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0;transition:opacity 1.2s ease}
+  #bgc{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;z-index:0;opacity:0;transition:opacity 1.2s ease}
   #bgc.on{opacity:1}
   #start::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,rgba(5,7,5,.45) 0%,rgba(5,7,5,.15) 55%,rgba(5,7,5,.4) 100%)}
   #start>*:not(#bgc){position:relative;z-index:2}
