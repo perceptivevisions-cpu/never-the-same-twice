@@ -22,6 +22,11 @@
   .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
     background:radial-gradient(ellipse at 50% 45%,#0d120d 0%,#050705 70%);transition:opacity 1.6s ease;padding:6vh 8vw;box-sizing:border-box}
   .screen.hide{opacity:0;pointer-events:none}
+  #start{background:#050705}
+  #bgc{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;z-index:0;opacity:0;transition:opacity 1.2s ease}
+  #bgc.on{opacity:1}
+  #start::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,rgba(5,7,5,.45) 0%,rgba(5,7,5,.15) 55%,rgba(5,7,5,.4) 100%)}
+  #start>*:not(#bgc){position:relative;z-index:2}
   .jt{font-family:'JasonBrush',Georgia,serif;letter-spacing:.01em}
   .t1{font-size:clamp(34px,5.2vw,78px);opacity:.92;margin:0 0 .5em}
   .lede{max-width:38em;font-size:clamp(15px,1.45vw,20px);line-height:1.7;opacity:.72;margin:0 0 2.2em}
@@ -62,6 +67,7 @@
 <div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
 
 <div class="screen" id="start">
+  <canvas id="bgc" width="640" height="360"></canvas>
   <p class="jt t1" style="font-size:clamp(38px,5.8vw,88px);margin-bottom:.3em">nobody remembers. dad does.</p>
   <p class="jt" style="font-size:clamp(22px,2.9vw,44px);opacity:.82;margin:0 0 .6em;line-height:1.2">this film will never play the same way twice.</p>
   <p class="lede" style="margin-bottom:1.6em">the order, the images, the words, chosen as it plays.</p>
@@ -124,7 +130,7 @@ const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),s
 // ---------------- content ----------------
 const SAMPLE=/sample/.test(location.hash),SAMPLE_SCENE=(location.hash.match(/sample=(\w+)/)||[])[1]||'barn';
 const PHONE0=/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
-const PHONE=/phone/.test(location.hash)||PHONE0;if(PHONE)document.body.classList.add('fill');
+const PHONE=/phone/.test(location.hash)||PHONE0;document.body.classList.add('fill');
 if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen)document.body.classList.add('nofs');
 let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
@@ -167,7 +173,8 @@ const FLASH=["fl_ISU-115","fl_ISU-116","fl_ISU-117","fl_ISU-118","fl_ISU-135","f
 
 // ---------------- loading ----------------
 const A='assets/',IMG={},BUF={};
-const essentialImgs=[...INTRO,'vignette'];for(const k in SC){const s=SC[k];essentialImgs.push(s.base,...s.layers);if(s.breathe)essentialImgs.push(s.breathe);if(s.pulse)essentialImgs.push(s.pulse)}
+const START_IMGS=['fl_ISU-285','fl_ISU-145','fl_ISU-151','fl_ISU-213','fl_ISU-219'];
+const essentialImgs=[...START_IMGS,...INTRO,'vignette'];for(const k in SC){const s=SC[k];essentialImgs.push(s.base,...s.layers);if(s.breathe)essentialImgs.push(s.breathe);if(s.pulse)essentialImgs.push(s.pulse)}
 const lazyImgs=[...ENDS,...FLASH];for(const k in SC)SC[k].alts.forEach(n=>lazyImgs.push(k+'_alt'+n));
 const decodeSnd=['heartbeat','whisper','amb_wind','amb_rain','amb_room','amb_tone'];
 const streamSnd=['unknown_eq','unknown_soft','candle','voice_spectral','voice_beholding'];
@@ -374,6 +381,7 @@ function drawImg(img,alpha,push,dx,dy,prog,op){if(!img||alpha<=0.003)return;cons
 function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.length===5?q:[q[0],q[1],0,q[2],q[3]];
   if(lt>=b&&lt<=b+up+hold+dn)v=Math.max(v,lt<b+up?pk*smooth((lt-b)/up):lt<b+up+hold?pk:pk*(1-smooth((lt-b-up-hold)/dn)))}return v}
 function fitW(){const r=cv.getBoundingClientRect();return Math.min(r.width,r.height*16/9)||1920}
+function visX(){const r=cv.getBoundingClientRect();if(!r.width)return[0,1920];const sc=Math.max(r.width/1920,r.height/1080),vw=Math.min(1920,r.width/sc);return[(1920-vw)/2,(1920+vw)/2]}
 function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return document.body.classList.contains('fill')?540+r.height/sc/2:1080}
 function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
 function dispScale(){const r=cv.getBoundingClientRect();return document.body.classList.contains('fill')?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
@@ -383,7 +391,7 @@ function regionLum(img,tb){if(!img)return 0;try{lumX.clearRect(0,0,192,108);lumX
   const d=lumX.getImageData(x,y,w,h).data;let sum=0;for(let i=0;i<d.length;i+=4)sum+=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]);return sum/(d.length/4)/255}catch(e){return 0}}
 function textBlock(s){const size=PHONE?Math.round(7.5/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
   const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
-  let x0=pl.h==='R'?W-110-bw:pl.h==='C'?(W-bw)/2-W*0.08:110;x0=clamp(x0+pl.jx,90,W-90-bw);
+  const[vl,vr]=visX();let x0=pl.h==='R'?vr-110-bw:pl.h==='C'?(vl+vr-bw)/2-(vr-vl)*0.08:vl+110;x0=clamp(x0+pl.jx,vl+90,Math.max(vl+90,vr-90-bw));
   let y0=pl.v==='high'?vT+110+size:pl.v==='mid'?H*0.5-bh/2:Math.min(944,vB-70)-bh;y0=clamp(y0+pl.jy,vT+90+size,vB-70-bh);
   return{plan,x0,y0,size,cx:x0+bw/2,cy:y0+bh/2-size*0.3}}
 function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
@@ -391,10 +399,10 @@ function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L
   const prog=clamp(lt/L);const tb=textBlock(s);
   // camera: push toward the text so it can be read
   let k=0;const q=s.push2;const minZ=q?(PHONE?Math.min(2.5,17/(dispScale()*tb.size)):Math.max(1,TUNE.textEnd*(q.zj||1)/tb.size)):1;if(q&&TUNE.pushIn>0){const u=lt-q.at;if(u>0)k=u<q.up?smooth(u/q.up):u<q.up+q.hold?1:1-smooth((u-q.up-q.hold)/q.dn)}
-  const bw=tb.plan.w+40,zCap=Math.max(1,(W-140)/bw);const z=1+Math.max(0,Math.min((q?(PHONE?Math.max(q.z,minZ):minZ):1),zCap)-1)*(q?TUNE.pushIn:0)*k;if(TEST)window.__z={z,k,minZ,zCap,size:tb.size,w:tb.plan.w,ds:dispScale()};ctx.save();
+  const[vl0,vr0]=visX(),bw=tb.plan.w+40,zCap=Math.max(1,(vr0-vl0-140)/bw);const z=1+Math.max(0,Math.min((q?(PHONE?Math.max(q.z,minZ):minZ):1),zCap)-1)*(q?TUNE.pushIn:0)*k;if(TEST)window.__z={z,k,minZ,zCap,size:tb.size,w:tb.plan.w,ds:dispScale()};ctx.save();
   if(k>0.001){const Fx=tb.cx,Fy=tb.cy;let Sx=lerp(Fx,W*0.46,k),Sy=lerp(Fy,H*0.66,k);
     Sx=Math.min(Fx*z,Math.max(W-(W-Fx)*z,Sx));Sy=Math.min(Fy*z,Math.max(H-(H-Fy)*z,Sy));
-    Sx=Math.max(70+z*(Fx-tb.x0),Math.min(W-70-z*(tb.x0+tb.plan.w-Fx),Sx));
+    Sx=Math.max(vl0+70+z*(Fx-tb.x0),Math.min(vr0-70-z*(tb.x0+tb.plan.w-Fx),Sx));
     const vb=visBottom()-40,bot=tb.y0+(tb.plan.n-1)*tb.plan.lh+tb.size*0.35;Sy=Math.min(Sy,vb-z*(bot-Fy));const vt=1080-visBottom()+40,top=tb.y0-tb.size;Sy=Math.max(Sy,vt+z*(Fy-top));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
   const sceneA=env(lt,0,s.fiB,L,s.foB);
   drawImg(IMG[s.base]||IMG[d.base],sceneA,s.push,s.dx,s.dy,prog);
@@ -479,6 +487,28 @@ if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
+// ---- start screen: a continuous blend of five abstract photos, never one alone; same push and grain as the film ----
+(()=>{const bc=document.getElementById('bgc'),bx=bc.getContext('2d');bc.width=W;bc.height=H;
+  const pool=START_IMGS.slice();let order=[],oi=0;const nextName=()=>{if(oi>=order.length){order=shuffle(pool);oi=0}return order[oi++]};
+  const LIFE=21,GAP=7;const layers=[];let next=0,gi2=0,gt=0,gx=0,gy=0;
+  function spawn(now,age,nm){let n=nm||nextName();if(!IMG[n]){const ok=START_IMGS.filter(x=>IMG[x]);if(!ok.length)return false;n=ok[Math.floor(Math.random()*ok.length)]}if(!IMG[n])return false;layers.push({img:IMG[n],born:now-age,dx:(Math.random()-.5)*60,dy:(Math.random()-.5)*34,s0:1.03,s1:1.1+Math.random()*0.06});return true}
+  function shown(){return!document.getElementById('start').classList.contains('hide')}
+  function draw(){if(shown()){const now=performance.now()/1000;
+      if(!layers.length){if(START_IMGS.some(n=>IMG[n])){spawn(now,LIFE*0.62);spawn(now,LIFE*0.3);spawn(now,0.5);next=now+GAP;bc.classList.add('on')}}
+      else if(now>next){if(spawn(now,0))next=now+GAP;else next=now+0.3}
+      bx.globalCompositeOperation='source-over';bx.globalAlpha=1;bx.fillStyle='#050705';bx.fillRect(0,0,W,H);
+      // weighted blend: each image's share rises and falls smoothly, so two or three are always mixed
+      let acc=0;for(let i=0;i<layers.length;i++){const L=layers[i],u=(now-L.born)/LIFE;if(u>=1){layers.splice(i--,1);continue}
+        const w=Math.pow(Math.sin(Math.PI*u),1.6);if(w<=0.001)continue;acc+=w;
+        const sc=L.s0+(L.s1-L.s0)*u,iw=W*sc,ih=H*sc;bx.globalAlpha=w/acc;bx.drawImage(L.img,(W-iw)/2+L.dx*u,(H-ih)/2+L.dy*u,iw,ih)}
+      bx.globalAlpha=0.06;bx.fillStyle='#050705';bx.fillRect(0,0,W,H);
+      if(IMG.vignette&&TUNE.vignette>0){bx.globalCompositeOperation='multiply';bx.globalAlpha=TUNE.vignette*0.8;bx.drawImage(IMG.vignette,0,0,W,H)}
+      if(TUNE.grain>0){if(now>gt){gi2=(gi2+1+Math.floor(Math.random()*(grainTiles.length-1)))%grainTiles.length;gx=-Math.random()*60;gy=-Math.random()*60;gt=now+1/24}
+        bx.globalCompositeOperation='overlay';bx.globalAlpha=TUNE.grain;bx.drawImage(grainTiles[gi2],gx,gy,W+60,H+60);
+        bx.globalCompositeOperation='hard-light';bx.globalAlpha=TUNE.grain*0.55;bx.drawImage(grainTiles[(gi2+5)%grainTiles.length],-60-gx,-60-gy,W+60,H+60)}
+      bx.globalCompositeOperation='source-over';bx.globalAlpha=1;requestAnimationFrame(draw)}
+    else{layers.length=0;bc.classList.remove('on');const iv=setInterval(()=>{if(shown()){clearInterval(iv);requestAnimationFrame(draw)}},400)}}
+  requestAnimationFrame(draw)})();
 if(PHONE)document.querySelector('#start .hint').textContent='about five minutes \u00b7 sound on \u00b7 best on a big screen';
 checkRotate();
 go.addEventListener('click',begin);
