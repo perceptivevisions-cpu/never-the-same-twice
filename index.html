@@ -118,7 +118,7 @@ const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),s
 
 // ---------------- content ----------------
 const SAMPLE=/sample/.test(location.hash);
-const PHONE=/phone/.test(location.hash)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
+const PHONE=/phone/.test(location.hash)||/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
 const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
 const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
