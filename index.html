@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A film by Jason Lindsey that assembles itself as it plays. It will never play the same way twice.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nobody Remembers — a film that is never the same twice">
+<meta property="og:description" content="A film by Jason Lindsey that assembles itself as it plays. Best on a big screen, sound on.">
+<meta property="og:image" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/og.jpg">
 <title>Nobody Remembers — a film that is never the same twice</title>
 <style>
   html,body{margin:0;height:100%;background:#050705;overflow:hidden;color:#e8e4d8;font-family:Georgia,serif}
@@ -27,6 +37,12 @@
     text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
   #stop{position:fixed;right:150px;bottom:16px;font-size:11px;letter-spacing:.16em;padding:.5em 1em;opacity:0;transition:opacity .6s;text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
   body.playing:hover #fs,body.playing:hover #stop{opacity:.55}
+  #rotate{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#050705;text-align:center;padding:10vw}
+  #rotate.show{display:flex}
+  #rotate p{font-family:'JasonBrush',Georgia,serif;font-size:clamp(28px,9vw,44px);margin:0;color:#e8e4d8;line-height:1.2}
+  #rotate small{font-family:Georgia,serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;opacity:.5}
+  #rotate i{display:block;width:34px;height:58px;border:2px solid rgba(232,228,216,.7);border-radius:7px;animation:rot 2.6s ease-in-out infinite}
+  @keyframes rot{0%,25%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
   #tune{position:fixed;left:14px;top:14px;width:290px;background:rgba(8,10,8,.88);border:1px solid rgba(232,228,216,.18);padding:14px 16px;
     font:12px/1.4 -apple-system,Helvetica,Arial,sans-serif;color:#d9d6cc;display:none;z-index:9;border-radius:4px}
   #tune.show{display:block}
@@ -56,6 +72,7 @@
   <button class="main" id="again">watch another</button>
 </div>
 
+<div id="rotate"><i></i><p>turn your phone sideways.</p><small>this film only plays sideways</small></div>
 <button id="fs">full screen</button>
 <button id="stop">end</button>
 
@@ -101,6 +118,7 @@ const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),s
 
 // ---------------- content ----------------
 const SAMPLE=/sample/.test(location.hash);
+const PHONE=/phone/.test(location.hash)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
 const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
 const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
@@ -313,7 +331,8 @@ function scheduleAudio(){const a=P.audio;master=actx.createGain();master.connect
 function mediaTick(t){for(const c of media){if(c.started)continue;if(t>=c.at-0.15){c.started=true;if(t>c.at+c.len-1)continue;const el=c.el;const late=Math.max(0,t-c.at);
   try{el.currentTime=c.off+late}catch(e){}const rem=c.len-late;
   const now=actx.currentTime,T=Math.max(now,t0+c.at);envGain(c.gn,T,c.g,late>0?1.5:c.fi,c.fo,Math.min(T+rem,t0+endT()));el.play().catch(()=>{});
-  setTimeout(()=>{try{el.pause()}catch(e){}},(rem+1)*1000)}}}
+  c.endAt=c.at+c.len+0.5}}
+  for(const c of media){if(c.started&&!c.done&&c.endAt&&t>c.endAt){c.done=true;try{c.el.pause()}catch(e){}}}}
 function unlockMedia(){for(const c of media){const el=c.el;const p=el.play();if(p&&p.then)p.then(()=>{if(!c.started)el.pause()}).catch(()=>{})}}
 
 // ---------------- render ----------------
@@ -322,8 +341,9 @@ function drawImg(img,alpha,push,dx,dy,prog,op){if(!img||alpha<=0.003)return;cons
   ctx.globalAlpha=1;if(op)ctx.globalCompositeOperation='source-over'}
 function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.length===5?q:[q[0],q[1],0,q[2],q[3]];
   if(lt>=b&&lt<=b+up+hold+dn)v=Math.max(v,lt<b+up?pk*smooth((lt-b)/up):lt<b+up+hold?pk:pk*(1-smooth((lt-b-up-hold)/dn)))}return v}
-function textBlock(s){const size=TUNE.textSize;const plan=glyphPlan(s.text.key,s.text.str,size,'left',1040,s.text.rnd);
-  const x0=110,yb=944,y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,1040)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
+function effSize(base,minCss){const cw=cv.getBoundingClientRect().width||1920;return Math.max(base,Math.round(minCss*1920/cw))}
+function textBlock(s){const size=effSize(TUNE.textSize,15),mw=Math.min(1700,Math.round(1040*Math.max(1,size/26)));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
+  const x0=110,yb=944,y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,mw)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
 function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
   if(s.loop&&lt>s.loop.at&&lt<s.loop.at+s.loop.d)lt-=s.loop.back;
   const prog=clamp(lt/L);const tb=textBlock(s);
@@ -354,8 +374,8 @@ function frame(){if(!playing)return;const t=actx.currentTime-t0+seekOff;mediaTic
     drawText(glyphPlan('t1','nobody remembers. dad does.',92,'center',0,mulberry32(seed^11)),W/2,H*0.47,92,{t,byLetter:true,fadeIn:I.t1.fi,fadeOut:I.t1.fo,float:3.5});
     drawText(glyphPlan('t2','Photos and Story Experience',52,'center',0,mulberry32(seed^22)),W/2,H*0.47,52,{t,byLetter:true,fadeIn:I.t2.fi,fadeOut:I.t2.fo,float:2.5});
     drawText(glyphPlan('t3','by Jason Lindsey',36,'center',0,mulberry32(seed^33)),W/2,H*0.47+70,36,{t,byLetter:true,fadeIn:[I.t2.fi[0]+0.6,I.t2.fi[1]],fadeOut:I.t2.fo,float:2})}
-  for(const w of P.words){const lt=t-w.at;if(lt<0||lt>w.d)continue;drawText(glyphPlan(w.key,w.str,46,'center',0,w.rnd),w.x,w.y,46,{t:lt,byLetter:true,fadeIn:[0,w.d*0.35],fadeOut:[w.d*0.55,w.d*0.4],float:2,alpha:0.9})}
-  if(el>E.hold*0.35){const lt=el-E.hold*0.35;drawText(glyphPlan('end1','this version will never play again.',30,'center',0,mulberry32(seed^44)),W/2,H*0.86,30,{t:lt,byLetter:true,fadeIn:[0,2.5],fadeOut:[E.hold*0.65+2,2],float:1.5,alpha:0.85})}
+  for(const w of P.words){const lt=t-w.at;if(lt<0||lt>w.d)continue;const ws=effSize(46,20);drawText(glyphPlan(w.key,w.str,ws,'center',0,w.rnd),w.x,w.y,ws,{t:lt,byLetter:true,fadeIn:[0,w.d*0.35],fadeOut:[w.d*0.55,w.d*0.4],float:2,alpha:0.9})}
+  if(el>E.hold*0.35){const lt=el-E.hold*0.35;const es=effSize(30,15);drawText(glyphPlan('end1','this version will never play again.',es,'center',0,mulberry32(seed^44)),W/2,H*0.86,es,{t:lt,byLetter:true,fadeIn:[0,2.5],fadeOut:[E.hold*0.65+2,2],float:1.5,alpha:0.85})}
   // memory gaps (drop to black)
   for(const g of P.gaps){const lt=t-g.at;if(lt<0||lt>g.d)continue;ctx.fillStyle='rgba(5,7,5,'+(0.96*env(lt,0,0.18,g.d,0.6))+')';ctx.fillRect(0,0,W,H)}
   // mood grade
@@ -384,11 +404,18 @@ function frame(){if(!playing)return;const t=actx.currentTime-t0+seekOff;mediaTic
   ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   if(t>=endT()){finish();return}
   requestAnimationFrame(frame)}
-let seekOff=0;
+let seekOff=0,paused=false;
+const portrait=()=>innerHeight>innerWidth;
+function checkRotate(){const need=PHONE&&portrait();document.getElementById('rotate').classList.toggle('show',need);
+  if(!playing)return;if(need&&!paused){paused=true;try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
+  else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
+addEventListener('resize',checkRotate);addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
 function finish(){if(!playing)return;playing=false;document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
   try{master&&master.disconnect()}catch(e){}
   document.getElementById('vnum2').textContent=fmtV(seed);document.getElementById('end').classList.remove('hide')}
 async function begin(){
+  if(PHONE&&portrait()){checkRotate();return}
+  if(PHONE){try{const el=document.documentElement;const r=(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.then)await r.catch(()=>{});await screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
   try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();await actx.resume()}catch(e){}
   await decodeAll();P=plan();P.first=FIRST;try{localStorage.setItem('nr_seen','1')}catch(e){}FIRST=false;window.__plan=P;
   let S=0;if(SAMPLE){const f=P.scenes.find(x=>x.name==='forest');S=f.start-4;P.stopAt=f.start+f.len+2}
@@ -399,6 +426,8 @@ if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
+if(PHONE)document.querySelector('#start .hint').textContent='about six and a half minutes \u00b7 sound on \u00b7 best on a big screen';
+checkRotate();
 go.addEventListener('click',begin);
 document.getElementById('again').addEventListener('click',()=>{prepare();document.getElementById('end').classList.add('hide');document.getElementById('start').classList.remove('hide')});
 document.getElementById('stop').addEventListener('click',()=>finish());
