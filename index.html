@@ -447,7 +447,7 @@ async function begin(){
   if(PHONE){try{const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;if(fn){const r=fn.call(el);if(r&&r.then)r.then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}}catch(e){}}
   try{await rs}catch(e){}
   await decodeAll();P=plan();P.first=FIRST;try{localStorage.setItem('nr_seen','1')}catch(e){}FIRST=false;window.__plan=P;
-  let S=0;if(SAMPLE){const f=P.scenes.find(x=>x.name===SAMPLE_SCENE)||P.scenes[0];S=f.start-4;P.stopAt=f.start+f.len+2}
+  let S=0;if(SAMPLE&&SAMPLE_SCENE==='end'){S=P.end.start-8}else if(SAMPLE){const f=P.scenes.find(x=>x.name===SAMPLE_SCENE)||P.scenes[0];S=f.start-4;P.stopAt=f.start+f.len+2}
   t0=actx.currentTime+1.2-S;seekOff=0;scheduleAudio();unlockMedia();
   document.getElementById('start').classList.add('hide');document.getElementById('end').classList.add('hide');document.body.classList.add('playing');
   playing=true;requestAnimationFrame(frame)}
