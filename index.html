@@ -267,7 +267,7 @@ function plan(){
     // the line: hold time follows its length (2s + 1/3s per word, 5-20s)
     const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
     const words=str.split(/\s+/).filter(Boolean).length,hold=clamp(2+words/3,5,20)*TUNE.readTime;
-    const tx={s:rr(4,7),fi:rr(3,4.5),fol:rr(4,6)},pa=tx.s+rr(0.5,2),pu=rr(5,7.5),fo=pa+pu+hold;
+    const tx={s:rr(4,7),fi:rr(3,4.5),fol:rr(4,6)},pa=tx.s+tx.fi+rr(1,2.5),pu=rr(5,7.5),fo=pa+pu+hold;
     const C=Math.max(PHONE?rr(25,30):rr(38,42),fo+tx.fol+2);
     const tail=clamp(L-C,PHONE?8:11,PHONE?12:24);L=C+tail;
     const s={name,start:t,len:L,push:rr(1.08,1.16),dx:rr(-70,70),dy:rr(-35,35),
@@ -360,18 +360,19 @@ function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.l
 function fitW(){const r=cv.getBoundingClientRect();return Math.min(r.width,r.height*16/9)||1920}
 function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return document.body.classList.contains('fill')?540+r.height/sc/2:1080}
 function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
-function textBlock(s){const size=effSize(TUNE.textSize,10),mw=Math.min(1700,Math.round(1040*Math.max(1,size/26)));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
+function dispScale(){const r=cv.getBoundingClientRect();return document.body.classList.contains('fill')?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
+function textBlock(s){const size=PHONE?Math.round(7.5/dispScale()):effSize(TUNE.textSize,10),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(1040*Math.max(1,size/26)));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
   const x0=110,yb=Math.min(944,visBottom()-70),y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,mw)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
 function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
   if(s.loop&&lt>s.loop.at&&lt<s.loop.at+s.loop.d)lt-=s.loop.back;
   const prog=clamp(lt/L);const tb=textBlock(s);
   // camera: push toward the text so it can be read
-  let k=0;const q=s.push2;const minZ=q?Math.min(1.9,17*1920/(fitW()*tb.size)):1;if(q&&TUNE.pushIn>0){const u=lt-q.at;if(u>0)k=u<q.up?smooth(u/q.up):u<q.up+q.hold?1:1-smooth((u-q.up-q.hold)/q.dn)}
-  const bw=tb.plan.w+40,zCap=Math.max(1,(W-140)/bw);const z=1+Math.max(0,Math.min((q?Math.max(q.z,minZ):1),zCap)-1)*(q?TUNE.pushIn:0)*k;ctx.save();
+  let k=0;const q=s.push2;const minZ=q?Math.min(PHONE?2.5:1.9,17/(dispScale()*tb.size)):1;if(q&&TUNE.pushIn>0){const u=lt-q.at;if(u>0)k=u<q.up?smooth(u/q.up):u<q.up+q.hold?1:1-smooth((u-q.up-q.hold)/q.dn)}
+  const bw=tb.plan.w+40,zCap=Math.max(1,(W-140)/bw);const z=1+Math.max(0,Math.min((q?Math.max(q.z,minZ):1),zCap)-1)*(q?TUNE.pushIn:0)*k;if(TEST)window.__z={z,k,minZ,zCap,size:tb.size,w:tb.plan.w,ds:dispScale()};ctx.save();
   if(k>0.001){const Fx=tb.cx,Fy=tb.cy;let Sx=lerp(Fx,W*0.46,k),Sy=lerp(Fy,H*0.66,k);
     Sx=Math.min(Fx*z,Math.max(W-(W-Fx)*z,Sx));Sy=Math.min(Fy*z,Math.max(H-(H-Fy)*z,Sy));
     Sx=Math.max(70+z*(Fx-tb.x0),Math.min(W-70-z*(tb.x0+tb.plan.w-Fx),Sx));
-    const vb=visBottom()-40,bot=tb.y0+(tb.plan.n-1)*tb.plan.lh+tb.size*0.35;Sy=Math.min(Sy,vb-z*(bot-Fy));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
+    const vb=visBottom()-40,bot=tb.y0+(tb.plan.n-1)*tb.plan.lh+tb.size*0.35;Sy=Math.min(Sy,vb-z*(bot-Fy));const vt=1080-visBottom()+40,top=tb.y0-tb.size;Sy=Math.max(Sy,vt+z*(Fy-top));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
   const sceneA=env(lt,0,s.fiB,L,s.foB);
   drawImg(IMG[s.base]||IMG[d.base],sceneA,s.push,s.dx,s.dy,prog);
   if(s.alt2)drawImg(IMG[s.alt2.n],env(lt,s.alt2.at,s.alt2.fi,L,s.foB),s.push,s.dx,s.dy,prog);
