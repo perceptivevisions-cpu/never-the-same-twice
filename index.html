@@ -281,7 +281,7 @@ function plan(){
       else{src=pick(poolOf(name));dd=rr(0.45,0.95);fd=rr(0.06,0.18)}
       p.cuts.push({n:src,at:t+ct,d:dd,fade:fd});ct+=dd+(chance(0.35)?rr(0.3,0.8):rr(1.5,5))}
     // text
-    const L0=LINES[name];const useAlt=!chance(0.5);let str=useAlt?pick(L0.a):L0.o;
+    const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
     s.text={str,dec:chance(0.55)?{late:Array.from({length:ri(1,2)},()=>[R(),rr(2,6)]),flick:Array.from({length:ri(0,2)},()=>[R(),rr(4,14),rr(0.25,0.9)]),ling:Array.from({length:ri(1,2)},()=>[R(),rr(-3,4)])}:null,s:rr(5,9),fi:rr(3,5),fo:L-rr(8,12),fol:rr(6,8),key:'p_'+name+'_'+k,rnd:mulberry32(seed^(k*7919+13))};
     s.push2=chance(0.85)?{at:s.text.s+rr(2,9),up:rr(3,5),hold:rr(3,7),dn:rr(4,6),z:rr(1.25,1.5)}:null;
     // ghosts
