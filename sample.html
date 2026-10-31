@@ -95,9 +95,9 @@ const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const TEST=/test/.test(location.hash);
 
 // ---------------- tunable look (sliders: add #tune to the address) ----------------
-const TDEF={music:0.5,musicLow:-6,grain:0.22,inkTexture:0.45,edgeRough:0.4,glow:0.45,textSize:26,pushIn:1.0,flicker:1.0,vignette:0.9};
+const TDEF={readTime:1,music:0.5,musicLow:-6,grain:0.22,inkTexture:0.45,edgeRough:0.4,glow:0.45,textSize:26,pushIn:1.0,flicker:1.0,vignette:0.9};
 const TSPEC=[['grain','Grain',0,0.5,0.01],['inkTexture','Ink texture',0,1,0.01],['edgeRough','Edge roughness',0,1,0.01],['glow','Glow',0,1,0.01],
-  ['textSize','Text size',18,40,1],['pushIn','Push-in on text',0,2,0.05],['flicker','Flicker',0,2,0.05],['vignette','Vignette',0,1,0.01],['music','Music level',0,1,0.01],['musicLow','Music low end / drum (dB)',-18,6,1]];
+  ['textSize','Text size',18,40,1],['pushIn','Push-in on text',0,2,0.05],['flicker','Flicker',0,2,0.05],['vignette','Vignette',0,1,0.01],['readTime','Reading time (next version)',0.5,2,0.05],['music','Music level',0,1,0.01],['musicLow','Music low end / drum (dB)',-18,6,1]];
 let TUNE=Object.assign({},TDEF);
 try{const s=JSON.parse(localStorage.getItem('nr_tune')||'null');if(s)Object.assign(TUNE,s)}catch(e){}
 function buildTune(){const box=document.getElementById('tuneRows');box.innerHTML='';
@@ -250,7 +250,7 @@ function plan(){
   const p={scenes:[],ghosts:[],bursts:[],cuts:[],words:[],gaps:[],loops:[],audio:{}};
   p.mood={warm:rr(-1,1),bright:rr(-0.1,0.05),haze:rr(0,0.12),pace:R()};
   const wx=R();p.weather=wx<0.36?'rain':wx<0.72?'wind':'still';
-  p.T=390+rr(-30,30);
+  p.T=PHONE?rr(270,300):390+rr(-30,30);
   // intro
   const iLen=rr(14,17.5),io=shuffle(INTRO).slice(0,ri(2,4));
   p.intro={len:iLen,photos:io.map((n,i)=>({n,s:i*iLen/io.length-1,e:(i+1)*iLen/io.length+2,push:rr(1.03,1.08),dx:rr(-16,16),dy:rr(-9,9)})),
@@ -263,7 +263,13 @@ function plan(){
   const startFirst=iLen-rr(2,3.5);
   const sumOv=ov.slice(1).reduce((a,b)=>a+b,0);const avail=p.T-endLen+endOv-startFirst+sumOv;const ws=w.reduce((a,b)=>a+b,0);
   let t=startFirst;
-  order.forEach((name,k)=>{const L=avail*w[k]/ws;const d=SC[name];const slow=lerp(0.8,1.25,p.mood.pace);
+  order.forEach((name,k)=>{let L=avail*w[k]/ws;const d=SC[name];const slow=lerp(0.8,1.25,p.mood.pace);
+    // the line: hold time follows its length (2s + 1/3s per word, 5-20s)
+    const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
+    const words=str.split(/\s+/).filter(Boolean).length,hold=clamp(2+words/3,5,20)*TUNE.readTime;
+    const tx={s:rr(4,7),fi:rr(3,4.5),fol:rr(4,6)},pa=tx.s+rr(0.5,2),pu=rr(5,7.5),fo=pa+pu+hold;
+    const C=Math.max(PHONE?rr(25,30):rr(38,42),fo+tx.fol+2);
+    const tail=clamp(L-C,PHONE?8:11,PHONE?12:24);L=C+tail;
     const s={name,start:t,len:L,push:rr(1.08,1.16),dx:rr(-70,70),dy:rr(-35,35),
       base:(d.alts.length&&chance(0.4))?name+'_alt'+pick(d.alts):d.base,
       fiB:rr(3.5,6)*slow,foB:rr(3.5,6)*slow,layers:d.layers.map((n,i)=>({n,s:L*rr(0.06,0.11)*(i+1),fi:rr(5,8)*slow,eo:L*rr(0.04,0.14)})),
@@ -273,7 +279,7 @@ function plan(){
     // slow drift to a second photo partway through (scenes without panel layers)
     if(!d.layers.length&&d.alts.length&&(SAMPLE||chance(0.6))){const c=d.alts.map(n=>name+'_alt'+n).filter(n=>n!==s.base);s.alt2={n:pick(c),at:L*rr(0.32,0.45),fi:rr(6,9)}}
     // fragment tail, like the film: the last stretch breaks into short cuts
-    const tail=clamp(L-rr(38,42),11,24);let ct=L-tail+rr(1,3);
+    let ct=L-tail+rr(1,3);
     const nx=order[k+1],others=Object.keys(SC).filter(x=>x!==name&&x!==nx);
     while(ct<L-3){const q=R();let src,dd,fd;
       if(q<0.05){src=pick(poolOf(pick(others)));dd=ri(2,4)/24;fd=0.02}
@@ -281,12 +287,10 @@ function plan(){
       else{src=pick(poolOf(name));dd=rr(0.45,0.95);fd=rr(0.06,0.18)}
       p.cuts.push({n:src,at:t+ct,d:dd,fade:fd});ct+=dd+(chance(0.35)?rr(0.3,0.8):rr(1.5,5))}
     // text
-    const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
-    s.text={str,dec:chance(0.55)?{late:Array.from({length:ri(1,2)},()=>[R(),rr(2,6)]),flick:Array.from({length:ri(0,2)},()=>[R(),rr(4,14),rr(0.25,0.9)]),ling:Array.from({length:ri(1,2)},()=>[R(),rr(-3,4)])}:null,s:rr(4,7),fi:rr(3,4.5),fo:0,fol:rr(4,6),key:'p_'+name+'_'+k,rnd:mulberry32(seed^(k*7919+13))};
-    s.text.fo=Math.min(L-tail-2,s.text.s+s.text.fi+rr(20,25));
-    s.push2={at:s.text.s+rr(0.5,2),up:rr(5,7.5),hold:0,dn:rr(4,6),z:rr(1.32,1.55)};s.push2.hold=Math.max(2,s.text.fo-s.push2.at-s.push2.up+1);
-    // something happens every 8-12s while the line is up
-    {let et=s.text.s+rr(6,9);const own=poolOf(name);while(et<s.text.fo){if(chance(0.5))p.ghosts.push({n:pick(own),at:t+et,d:rr(2.2,3.4),pk:rr(0.3,0.5),push:rr(1.03,1.07)});
+    s.text={str,dec:chance(0.55)?{late:Array.from({length:ri(1,2)},()=>[R(),rr(2,6)]),flick:Array.from({length:ri(0,2)},()=>[R(),rr(4,14),rr(0.25,0.9)]),ling:Array.from({length:ri(1,2)},()=>[R(),rr(-3,4)])}:null,s:tx.s,fi:tx.fi,fo,fol:tx.fol,key:'p_'+name+'_'+k,rnd:mulberry32(seed^(k*7919+13))};
+    s.push2={at:pa,up:pu,hold:Math.max(1,fo-pa-pu+1),dn:rr(4,6),z:rr(1.32,1.55)};
+    // something happens every 8-12s through the continuous part
+    {let et=s.text.s+rr(6,9);const own=poolOf(name);while(et<C-2){if(chance(0.5))p.ghosts.push({n:pick(own),at:t+et,d:rr(2.2,3.4),pk:rr(0.3,0.5),push:rr(1.03,1.07)});
       else p.ghosts.push({n:pick(own),at:t+et,d:rr(4,6),pk:rr(0.55,0.85),push:rr(1.04,1.1),op:'source-over'});et+=rr(8,12)}}
     // ghosts
     const ng=ri(1,3);for(let g=0;g<ng;g++)p.ghosts.push({n:pick(poolOf((order[k+1]&&chance(0.2))?order[k+1]:name)),at:t+rr(6,L-6),d:rr(1.6,2.8),pk:rr(0.22,0.45),push:rr(1.02,1.06)});
@@ -442,7 +446,7 @@ async function begin(){
   playing=true;requestAnimationFrame(frame)}
 if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
-  if(SAMPLE){document.querySelector('#start .lede').textContent='Pacing test: the barn scene only, about a minute. The line holds less time, the camera pushes into the writing, and something happens every 8 to 12 seconds.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
+  if(SAMPLE){document.querySelector('#start .lede').textContent='Pacing test: the barn scene only, about a minute.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
 if(PHONE)document.querySelector('#start .hint').textContent='about six and a half minutes \u00b7 sound on \u00b7 best on a big screen';
 checkRotate();
