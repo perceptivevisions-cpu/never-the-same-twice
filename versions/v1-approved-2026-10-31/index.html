@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A film by Jason Lindsey that assembles itself as it plays. It will never play the same way twice.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nobody Remembers — a film that is never the same twice">
+<meta property="og:description" content="A film by Jason Lindsey that assembles itself as it plays. Best on a big screen, sound on.">
+<meta property="og:image" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://perceptivevisions-cpu.github.io/never-the-same-twice/og.jpg">
+<title>Nobody Remembers — a film that is never the same twice</title>
+<style>
+  html,body{margin:0;height:100%;background:#050705;overflow:hidden;color:#e8e4d8;font-family:Georgia,serif}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050705}
+  canvas{width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;display:block;background:#050705}
+  body.fill canvas{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;object-fit:cover}
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    background:radial-gradient(ellipse at 50% 45%,#0d120d 0%,#050705 70%);transition:opacity 1.6s ease;padding:6vh 8vw;box-sizing:border-box}
+  .screen.hide{opacity:0;pointer-events:none}
+  .jt{font-family:'JasonBrush',Georgia,serif;letter-spacing:.01em}
+  .t1{font-size:clamp(34px,5.2vw,78px);opacity:.92;margin:0 0 .5em}
+  .lede{max-width:38em;font-size:clamp(15px,1.45vw,20px);line-height:1.7;opacity:.72;margin:0 0 2.2em}
+  .ver{font-size:clamp(12px,1.05vw,14px);letter-spacing:.22em;text-transform:uppercase;opacity:.55;margin-bottom:2.4em}
+  .ver b{font-weight:normal;letter-spacing:.12em;color:#cfd8c4}
+  button.main{font-family:'JasonBrush',Georgia,serif;font-size:clamp(20px,2vw,28px);color:#e8e4d8;background:transparent;
+    border:1px solid rgba(232,228,216,.35);padding:.55em 1.8em .45em;border-radius:2px;cursor:pointer;transition:all .4s}
+  button.main:hover{border-color:rgba(232,228,216,.8);background:rgba(232,228,216,.06)}
+  button.main:disabled{opacity:.35;cursor:default}
+  .hint{margin-top:1.4em;font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.4}
+  #load{height:1px;width:220px;background:rgba(232,228,216,.15);margin-top:1.6em;position:relative;overflow:hidden}
+  #load i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(232,228,216,.6);transition:width .3s}
+  #fs{position:fixed;right:18px;bottom:16px;font-size:11px;letter-spacing:.16em;padding:.5em 1em;opacity:0;transition:opacity .6s;
+    text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
+  #stop{position:fixed;right:150px;bottom:16px;font-size:11px;letter-spacing:.16em;padding:.5em 1em;opacity:0;transition:opacity .6s;text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
+  body.playing:hover #fs,body.playing:hover #stop{opacity:.55}
+  body.fill.playing #fs,body.fill.playing #stop{opacity:0;pointer-events:none}
+  body.fill.playing.tapped #fs,body.fill.playing.tapped #stop{opacity:.55;pointer-events:auto}
+  body.nofs #fs{display:none}
+  body.nofs #stop{right:18px}
+  #rotate{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#050705;text-align:center;padding:10vw}
+  #rotate.show{display:flex}
+  #rotate p{font-family:'JasonBrush',Georgia,serif;font-size:clamp(28px,9vw,44px);margin:0;color:#e8e4d8;line-height:1.2}
+  #rotate small{font-family:Georgia,serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;opacity:.5}
+  #rotate i{display:block;width:34px;height:58px;border:2px solid rgba(232,228,216,.7);border-radius:7px;animation:rot 2.6s ease-in-out infinite}
+  @keyframes rot{0%,25%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+  #tune{position:fixed;left:14px;top:14px;width:290px;background:rgba(8,10,8,.88);border:1px solid rgba(232,228,216,.18);padding:14px 16px;
+    font:12px/1.4 -apple-system,Helvetica,Arial,sans-serif;color:#d9d6cc;display:none;z-index:9;border-radius:4px}
+  #tune.show{display:block}
+  #tune h4{margin:0 0 8px;font-weight:500;font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
+  #tune label{display:grid;grid-template-columns:100px 1fr 34px;gap:8px;align-items:center;margin:5px 0}
+  #tune input{width:100%}
+  #tune .row{display:flex;gap:8px;margin-top:10px}
+  #tune button{flex:1;background:transparent;color:#d9d6cc;border:1px solid rgba(232,228,216,.3);padding:5px;cursor:pointer;font-size:11px}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
+
+<div class="screen" id="start">
+  <p class="jt t1" style="font-size:clamp(38px,5.8vw,88px);margin-bottom:.3em">nobody remembers. dad does.</p>
+  <p class="jt" style="font-size:clamp(22px,2.9vw,44px);opacity:.82;margin:0 0 .6em;line-height:1.2">this film will never play the same way twice.</p>
+  <p class="lede" style="margin-bottom:1.6em">the order, the images, the words, chosen as it plays.</p>
+  <div class="ver">You are about to see version <b id="vnum">—</b></div>
+  <button class="main" id="go" disabled>loading…</button>
+  <div id="load"><i id="bar"></i></div>
+  <div class="hint">about six and a half minutes · sound on · best full screen</div>
+</div>
+
+<div class="screen hide" id="end">
+  <p class="jt t1" style="font-size:clamp(26px,3.4vw,52px)">that version is gone.</p>
+  <p class="lede" style="margin-bottom:1.4em">Version <span id="vnum2"></span> played once and will not play again.</p>
+  <button class="main" id="again">watch another</button>
+</div>
+
+<div id="rotate"><i></i><p>turn your phone sideways.</p><small>this film only plays sideways</small></div>
+<button id="fs">full screen</button>
+<button id="stop">end</button>
+
+<div id="tune">
+  <h4>Tune · saved in this browser</h4>
+  <div id="tuneRows"></div>
+  <div class="row"><button id="tReset">Reset</button><button id="tCopy">Copy settings</button></div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const W=1920,H=1080,INK=[232,228,216];
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const TEST=/test/.test(location.hash);
+
+// ---------------- tunable look (sliders: add #tune to the address) ----------------
+const TDEF={readTime:1,music:0.5,musicLow:-6,grain:0.22,inkTexture:0.45,edgeRough:0.4,glow:0.45,textSize:18,textEnd:37,darken:0.6,pushIn:1.0,flicker:1.0,vignette:0.9};
+const TSPEC=[['grain','Grain',0,0.5,0.01],['inkTexture','Ink texture',0,1,0.01],['edgeRough','Edge roughness',0,1,0.01],['glow','Glow',0,1,0.01],
+  ['textSize','Text start size',10,32,1],['textEnd','Text zoomed size',22,60,1],['darken','Darken behind text',0,1,0.01],['pushIn','Push-in on text',0,2,0.05],['flicker','Flicker',0,2,0.05],['vignette','Vignette',0,1,0.01],['readTime','Reading time (next version)',0.5,2,0.05],['music','Music level',0,1,0.01],['musicLow','Music low end / drum (dB)',-18,6,1]];
+let TUNE=Object.assign({},TDEF);
+try{const s=JSON.parse(localStorage.getItem('nr_tune2')||'null');if(s)Object.assign(TUNE,s)}catch(e){}
+function buildTune(){const box=document.getElementById('tuneRows');box.innerHTML='';
+  TSPEC.forEach(([k,lab,mn,mx,st])=>{const l=document.createElement('label');l.innerHTML=`<span>${lab}</span><input type="range" min="${mn}" max="${mx}" step="${st}" value="${TUNE[k]}"><b>${(+TUNE[k]).toFixed(st<1?2:0)}</b>`;
+    const i=l.querySelector('input'),b=l.querySelector('b');i.oninput=()=>{TUNE[k]=+i.value;b.textContent=(+i.value).toFixed(st<1?2:0);
+      try{localStorage.setItem('nr_tune2',JSON.stringify(TUNE))}catch(e){}if(k==='inkTexture')makeInkPattern();if(k==='textSize')clearTextCache();if(/glow|inkTexture|edgeRough/.test(k))spriteCache.clear();applyMix()};box.appendChild(l)})}
+document.getElementById('tReset').onclick=()=>{TUNE=Object.assign({},TDEF);try{localStorage.removeItem('nr_tune2')}catch(e){}buildTune();makeInkPattern();clearTextCache()};
+document.getElementById('tCopy').onclick=()=>{const t=JSON.stringify(TUNE);try{navigator.clipboard.writeText(t).catch(()=>{})}catch(e){}document.getElementById('tCopy').textContent='Copied'};
+function checkTune(){document.getElementById('tune').classList.toggle('show',/tune/.test(location.hash))}
+window.addEventListener('hashchange',checkTune);
+window.addEventListener('keydown',e=>{if(e.key==='t'||e.key==='T')document.getElementById('tune').classList.toggle('show')});buildTune();checkTune();
+
+// ---------------- seeded random ----------------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let seed=1,R=Math.random;
+const rr=(a,b)=>a+(b-a)*R(), ri=(a,b)=>Math.floor(rr(a,b+1)), pick=a=>a[Math.floor(R()*a.length)], chance=p=>R()<p;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function newSeed(){const u=new Uint32Array(1);try{crypto.getRandomValues(u)}catch(e){u[0]=Math.random()*4294967295}return u[0]||7}
+const fmtV=n=>'№ '+String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x)), lerp=(a,b,k)=>a+(b-a)*k;
+const smooth=x=>{x=clamp(x);return x*x*(3-2*x)};
+const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),smooth((b-t)/Math.max(fo,1e-3)));
+
+// ---------------- content ----------------
+const SAMPLE=/sample/.test(location.hash),SAMPLE_SCENE=(location.hash.match(/sample=(\w+)/)||[])[1]||'barn';
+const PHONE0=/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
+const PHONE=/phone/.test(location.hash)||PHONE0;if(PHONE)document.body.classList.add('fill');
+if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen)document.body.classList.add('nofs');
+let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
+let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
+const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
+const FILM_PLACE={bedroom:['R','low'],fjord:['C','low'],barn:['R','low'],forest:['R','low'],skywater:['L','low'],cloud:['L','low'],lake:['L','mid']};
+const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
+const FL=a=>a.map(x=>typeof x==='number'?'fl_ISU-'+x:'fl_'+x);
+const FLASH_BY={forest:FL([3,19,46,47,49,62,80,81,115,116,117,118,135,136,137,138,139,145,151]),
+ lake:FL([162,155,143,24,236]),barn:FL([233,272,273,274,275,276,301,308,309,310,311,312,313,340,1,238]),
+ cloud:FL([196,213,219,221,222,229,285]),fjord:FL([356,368,379,285,236]),skywater:FL([356,368,379,24]),
+ bedroom:FL([298,299,300,120,282,'_DSC6199','_DSC6284',95,103])};
+function poolOf(name){const d=SC[name];return[...FLASH_BY[name],...d.layers,...(d.breathe?[d.breathe]:[]),...d.alts.map(n=>name+'_alt'+n)]}
+const SC={
+ bedroom:{base:'bedroom_base',alts:[],layers:['bedroom_wide'],breathe:'bedroom_breathe',brMax:0.95},
+ barn:{base:'barn_base',alts:[303,314,316,332,336],layers:['barn_right'],breathe:'barn_breathe',brMax:0.95},
+ skywater:{base:'skywater_base',alts:[350,352,354,358],layers:['skywater_water'],breathe:'skywater_breathe',brMax:0.95},
+ lake:{base:'lake_base',alts:[157,161,166,170,177],layers:[],pulse:'lake_him',pulseMax:0.88,pulseFirst:true},
+ fjord:{base:'fjord_base',alts:[258,259,261,265,268],layers:['fjord_mid','fjord_right'],breathe:'fjord_breathe',brMax:0.95},
+ forest:{base:'forest_base',alts:[41,53,55,63],layers:[],pulse:'forest_echo',pulseMax:0.79,breathe:'forest_breathe',brMax:0.54},
+ cloud:{base:'cloud_base',alts:[199,201,206,209,211],layers:['cloud_mid','cloud_right'],breathe:'cloud_breathe',brMax:0.95}};
+const LINES={
+ bedroom:{o:"always the old road. we never asked why. the lamp across the street\nkept its own hours, and I learned the shape of a window long before I\nlearned whose it was. someone was talking in the next room. I\ncouldn’t hear what they were saying. I only kept the light.",
+   a:["we never asked. a lamp kept hours no one gave. the window, then whose. someone in the next room? I kept the light. not what they said. Can you hear me?",
+      "the road. the kings road? the same lamp. I learned the window first. later the people, or never. a voice? through the wall. light? i learned the road later."]},
+ barn:{o:"who remembers? nobody remembers. dad does. he won’t\nsay which door.",a:["nobody remembers. dad does. the door is still there. door? why won't he say?","a barn, a door, his hand on it. who remembers. which window? was the door open?"]},
+ fjord:{o:"the next valley? the water held the sky the way a photograph holds a\nface, closer than we ever stood to it.",
+   a:["the water kept the sky the way a picture keeps a face. we stood farther. always farther. closer?","the water held the sky. valley after valley. the water, holding us. does the water know?"]},
+ skywater:{o:"was I there. I only have the picture. the rest is weather.\n\nwhat have I painted in since?",
+   a:["was I there. the picture is. did I paint it?","picture, yes. me, maybe. sky? how much is mine? does the sky remember?","I have the picture. what is real? a picture or memory? water holds..."]},
+ forest:{o:"who walked ahead of us? one of us, or two? I remember the back of a coat and\nthe light coming through the trees. I never saw a face.",
+   a:["someone ahead? the back of a coat. light, trees? no face. never a face.","who walked ahead? the coat. the smell. will the trees tell me? was that a face? no I am alone?"]},
+ cloud:{o:"the road went up into the cloud and the cloud kept it. someone said the\nmountain was still there. I took their word for it. is this where they go?",
+   a:["is this where they go? the cloud kept it. they said the mountain is still there. did the sky remember?","road. cloud. no mountain, only their word for it. where do they go?","up into white. the road, then not. someone said it’s still there. I believed them. is this where."]},
+ lake:{o:"he was looking at the water. then the water was there without him. which\npicture is the one I remember?",
+   a:["he was looking at the water. which picture is mine? then only water. where?","him. the water. then the water without him. which one do I keep. how do i know?"]}};
+const FLASH_WORDS=["nobody remembers.","dad does.","which door?","was I there.","the rest is weather.","is this where they go?","who walked ahead?","which picture?","the light, I kept.","closer?"];
+const INTRO=['intro_DSC5755','intro_DSC6054','intro_DSC6222','intro_DSC6223','intro_DSC6226','intro_DSC6341','intro_DSC6363','intro_DSC6373'];
+const ENDS=['end_DSC5535','end_DSC6092','end_DSC6191','end_DSC6296','end_DSC5565','end_DSC5828'];
+const FLASH=["fl_ISU-115","fl_ISU-116","fl_ISU-117","fl_ISU-118","fl_ISU-135","fl_ISU-136","fl_ISU-137","fl_ISU-138","fl_ISU-139","fl_ISU-221","fl_ISU-272","fl_ISU-273","fl_ISU-274","fl_ISU-275","fl_ISU-276","fl_ISU-298","fl_ISU-299","fl_ISU-300","fl_ISU-308","fl_ISU-309","fl_ISU-310","fl_ISU-311","fl_ISU-312","fl_ISU-313","fl_ISU-46","fl_ISU-47","fl_ISU-62","fl_ISU-81","fl__DSC6199","fl__DSC6284","fl_ISU-1","fl_ISU-3","fl_ISU-19","fl_ISU-24","fl_ISU-49","fl_ISU-80","fl_ISU-95","fl_ISU-103","fl_ISU-120","fl_ISU-143","fl_ISU-145","fl_ISU-151","fl_ISU-155","fl_ISU-162","fl_ISU-196","fl_ISU-213","fl_ISU-219","fl_ISU-222","fl_ISU-229","fl_ISU-233","fl_ISU-236","fl_ISU-238","fl_ISU-270","fl_ISU-282","fl_ISU-285","fl_ISU-301","fl_ISU-340","fl_ISU-356","fl_ISU-368","fl_ISU-379"];
+
+// ---------------- loading ----------------
+const A='assets/',IMG={},BUF={};
+const essentialImgs=[...INTRO,'vignette'];for(const k in SC){const s=SC[k];essentialImgs.push(s.base,...s.layers);if(s.breathe)essentialImgs.push(s.breathe);if(s.pulse)essentialImgs.push(s.pulse)}
+const lazyImgs=[...ENDS,...FLASH];for(const k in SC)SC[k].alts.forEach(n=>lazyImgs.push(k+'_alt'+n));
+const decodeSnd=['heartbeat','whisper','amb_wind','amb_rain','amb_room','amb_tone'];
+const streamSnd=['unknown_eq','unknown_soft','candle','voice_spectral','voice_beholding'];
+let done=0;const need=essentialImgs.length+decodeSnd.length+1;
+const bar=document.getElementById('bar'),go=document.getElementById('go');
+function tick(){done++;bar.style.width=Math.min(100,100*done/need)+'%';if(done>=need&&go.disabled){go.disabled=false;go.textContent='begin'}}
+function loadImg(n,cb){const i=new Image();i.decoding='async';i.onload=()=>{IMG[n]=i;cb&&cb()};i.onerror=()=>{cb&&cb()};i.src=A+'img/'+n+'.webp'}
+const raw={};
+essentialImgs.forEach(n=>loadImg(n,tick));
+decodeSnd.forEach(n=>fetch(A+'snd/'+n+'.mp3').then(r=>r.arrayBuffer()).then(b=>{raw[n]=b;tick()}).catch(tick));
+(async()=>{try{const b=await(await fetch(A+'Jason3-BrushThin.ttf')).arrayBuffer();const f=new FontFace('JasonBrush',b);await f.load();document.fonts.add(f)}catch(e){}tick()})();
+let lazyI=0;(function lazy(){if(lazyI>=lazyImgs.length)return;const n=lazyImgs[lazyI++];loadImg(n,()=>setTimeout(lazy,10))})();
+
+// ---------------- textures ----------------
+let inkPat=null;
+function makeInkPattern(){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');const id=g.createImageData(256,256);
+  const k=TUNE.inkTexture;
+  // blotchy value noise
+  const sm=[];for(let i=0;i<32*32;i++)sm.push(Math.random());
+  const val=(x,y)=>{const fx=x/8,fy=y/8,x0=Math.floor(fx)%32,y0=Math.floor(fy)%32,x1=(x0+1)%32,y1=(y0+1)%32,tx=fx-Math.floor(fx),ty=fy-Math.floor(fy);
+    return lerp(lerp(sm[y0*32+x0],sm[y0*32+x1],tx),lerp(sm[y1*32+x0],sm[y1*32+x1],tx),ty)};
+  for(let y=0;y<256;y++)for(let x=0;x<256;x++){const i=(y*256+x)*4;const v=0.6*val(x,y)+0.4*Math.random();
+    const a=1-k*0.75*Math.pow(v,1.4);id.data[i]=INK[0];id.data[i+1]=INK[1];id.data[i+2]=INK[2];id.data[i+3]=Math.round(255*clamp(a,0.08,1))}
+  g.putImageData(id,0,0);inkPat=ctx.createPattern(c,'repeat')}
+makeInkPattern();
+const grainTiles=[];for(let n=0;n<10;n++){const g=document.createElement('canvas');g.width=960;g.height=540;const gx=g.getContext('2d');const id=gx.createImageData(960,540);
+  for(let i=0;i<id.data.length;i+=4){const v=(Math.random()-0.5)*255*0.62,c=(Math.random()-0.5)*18;id.data[i]=128+v+c;id.data[i+1]=128+v;id.data[i+2]=128+v-c;id.data[i+3]=255}
+  gx.putImageData(id,0,0);grainTiles.push(g)}
+
+// ---------------- text engine ----------------
+let textCache={};const clearTextCache=()=>{textCache={}};
+function layout(str,size,align,maxW){ctx.save();ctx.font=size+'px JasonBrush, Georgia, serif';
+  const out=[];const paras=str.split('\n');
+  for(const p of paras){if(p===''){out.push('');continue}
+    if(!maxW){out.push(p);continue}
+    const ws=p.split(' ');let line='';for(const w of ws){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t}if(line)out.push(line)}
+  ctx.restore();return out}
+function glyphPlan(key,str,size,align,maxW,rnd){
+  const k=key+'|'+size;if(textCache[k])return textCache[k];
+  const lines=layout(str,size,align,maxW);ctx.save();ctx.font=size+'px JasonBrush, Georgia, serif';
+  const g=[];let word=0,ci=0;const lh=size*1.55;let maxw=0;
+  lines.forEach((line,li)=>{const tw=ctx.measureText(line).width;maxw=Math.max(maxw,tw);let x=align==='center'?-tw/2:0;
+    for(const ch of line){const w=ctx.measureText(ch).width;if(ch===' '){word++;x+=w;continue}
+      g.push({ch,x,y:li*lh,word,i:ci++,dy:(rnd()*2-1)*0.09*size,sc:1+(rnd()*2-1)*0.12,rot:(rnd()*2-1)*3*Math.PI/180,
+        ink:1-rnd()*0.15,fin:rnd(),fout:rnd(),ex:[(rnd()*2-1),(rnd()*2-1),(rnd()*2-1),(rnd()*2-1)]});x+=w}
+    word++});
+  const wph=[];for(let w=0;w<=word;w++)wph.push({p1:rnd()*6.283,p2:rnd()*6.283,f1:6+rnd()*5,f2:8+rnd()*6,ink:0.62+rnd()*0.38,fin:rnd(),fout:rnd()});
+  ctx.restore();return textCache[k]={g,wph,lh,n:lines.length,w:maxw}}
+const spriteCache=new Map();
+function glyphSprite(ch,size,variant,ex){const key=ch+'|'+size+'|'+variant;let sp=spriteCache.get(key);if(sp)return sp;
+  const S=size<24?3:2.4,pad=Math.ceil(size*0.7),asc=Math.ceil(size*1.05),desc=Math.ceil(size*0.45);
+  ctx.save();ctx.font=size+'px JasonBrush, Georgia, serif';const w=Math.ceil(ctx.measureText(ch).width);ctx.restore();
+  const c=document.createElement('canvas');c.width=Math.ceil((w+pad*2)*S);c.height=Math.ceil((asc+desc+pad*2)*S);const g=c.getContext('2d');
+  g.scale(S,S);g.translate(pad,pad+asc);g.font=size+'px JasonBrush, Georgia, serif';g.textBaseline='alphabetic';
+  const rough=TUNE.edgeRough*size*0.035,glow=TUNE.glow;
+  if(glow>0){g.globalAlpha=glow*0.75;g.shadowColor='rgba(232,228,216,.6)';g.shadowBlur=size*0.45*S;g.fillStyle='rgba(232,228,216,.35)';g.fillText(ch,0,0);g.shadowBlur=0}
+  g.fillStyle=inkPat||'#e8e4d8';
+  if(rough>0.05){g.globalAlpha=0.35;for(let e=0;e<2;e++)g.fillText(ch,ex[e*2]*rough,ex[e*2+1]*rough)}
+  g.globalAlpha=0.92;g.fillText(ch,0,0);
+  sp={c,ox:-pad,oy:-pad-asc,w:c.width/S,h:c.height/S};if(spriteCache.size>4000)spriteCache.clear();spriteCache.set(key,sp);return sp}
+function drawText(plan,x,y,size,o){
+  ctx.save();
+  for(const gl of plan.g){const wp=plan.wph[gl.word];const u=o.byLetter?gl.fin:wp.fin,v=o.byLetter?gl.fout:wp.fout;
+    let a=1;
+    let dIn=0,dOut=0,fk=1;if(o.dec){const nw=plan.wph.length,wi=gl.word;
+      for(const[q,x]of o.dec.late)if(Math.floor(q*nw)===wi)dIn+=x;
+      for(const[q,x]of o.dec.ling)if(Math.floor(q*nw)===wi)dOut+=x;
+      for(const[q,at,d]of o.dec.flick)if(Math.floor(q*nw)===wi){const z=o.t-(o.fadeIn[0]+o.fadeIn[1]+at);if(z>0&&z<d)fk=0.08+0.25*Math.random()}}
+    if(o.fadeIn){const[s,l]=o.fadeIn;const st=s+u*l*0.7+dIn;a*=smooth((o.t-st)/(l*0.35+0.25))}
+    if(o.fadeOut){const[s,l]=o.fadeOut;const st=s+v*l*0.7+dOut;a*=1-smooth((o.t-st)/(l*0.35+0.25))}
+    a*=fk;
+    a*=(o.byLetter?gl.ink:wp.ink*gl.ink)*(o.alpha??1);if(a<=0.004)continue;
+    const fl=o.float||0;const fx=fl*Math.sin(o.t*6.283/wp.f1+wp.p1),fy=fl*0.7*Math.sin(o.t*6.283/wp.f2+wp.p2);
+    const sp=glyphSprite(gl.ch,size,gl.i%3,gl.ex);
+    ctx.save();ctx.translate(x+gl.x+fx,y+gl.y+gl.dy+fy);ctx.rotate(gl.rot);ctx.scale(gl.sc,gl.sc);
+    ctx.globalAlpha=Math.min(1,a);ctx.drawImage(sp.c,sp.ox,sp.oy,sp.w,sp.h);ctx.restore()}
+  ctx.restore()}
+function decay(str,r){ // word decay: drop / repeat / swap
+  const ws=str.split(' ');const ops=1+(r()<0.4?1:0);
+  for(let k=0;k<ops;k++){const i=1+Math.floor(r()*(ws.length-2));const op=r();
+    if(op<0.4&&ws.length>4){if(!/\n/.test(ws[i]))ws.splice(i,1)}
+    else if(op<0.7){ws.splice(i,0,ws[i].replace(/\n/g,''))}
+    else{if(!/\n/.test(ws[i])&&!/\n/.test(ws[i+1]||'\n'))[ws[i],ws[i+1]]=[ws[i+1],ws[i]]}}
+  return ws.join(' ')}
+
+// ---------------- plan a version ----------------
+let P=null;
+function plan(){
+  R=mulberry32(seed);clearTextCache();
+  const p={scenes:[],ghosts:[],bursts:[],cuts:[],words:[],gaps:[],loops:[],audio:{}};
+  p.mood={warm:rr(-1,1),bright:rr(-0.1,0.05),haze:rr(0,0.12),pace:R()};
+  const wx=R();p.weather=wx<0.36?'rain':wx<0.72?'wind':'still';
+  p.T=PHONE?rr(270,300):rr(287,303);
+  // intro
+  const iLen=rr(14,17.5),io=shuffle(INTRO).slice(0,ri(2,4));
+  p.intro={len:iLen,photos:io.map((n,i)=>({n,s:i*iLen/io.length-1,e:(i+1)*iLen/io.length+2,push:rr(1.03,1.08),dx:rr(-16,16),dy:rr(-9,9)})),
+    t1:{fi:[rr(0.4,1),rr(2.3,3.2)],fo:[rr(5,6),rr(2.2,2.8)]},t2s:rr(7.3,8.3)};
+  p.intro.t2={fi:[p.intro.t2s,rr(2,2.6)],fo:[p.intro.t2s+rr(3.6,4.4),rr(1.8,2.4)]};
+  // order + lengths
+  const fixed=SAMPLE||FIRST;let order=fixed?FILM_ORDER.slice():shuffle(Object.keys(SC));
+  const w=order.map(n=>FILM_LEN[n]*rr(0.9,1.1));if(!fixed&&chance(0.3))w[ri(0,w.length-1)]*=0.75;
+  const ov=order.map(()=>lerp(3.2,6.5,p.mood.pace)+rr(-1,1));const endHold=rr(9,12),endLen=4+endHold+3.5,endOv=rr(3,4.5);
+  const startFirst=iLen-rr(2,3.5);
+  const sumOv=ov.slice(1).reduce((a,b)=>a+b,0);const avail=p.T-endLen+endOv-startFirst+sumOv;const ws=w.reduce((a,b)=>a+b,0);
+  let t=startFirst;
+  order.forEach((name,k)=>{let L=avail*w[k]/ws;const d=SC[name];const slow=lerp(0.8,1.25,p.mood.pace);
+    // the line: hold time follows its length (2s + 1/3s per word, 5-20s)
+    const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
+    const words=str.split(/\s+/).filter(Boolean).length,hold=clamp(2+words/3,5,20)*TUNE.readTime;
+    const tx={s:rr(4,7),fi:rr(3,4.5),fol:rr(4,6)},pa=tx.s+tx.fi+rr(1,2.5),pu=rr(5,7.5),fo=pa+pu+hold;
+    const C=Math.max(PHONE?rr(25,30):rr(32,36),fo+tx.fol+2);
+    const tail=clamp(L-C,PHONE?8:10,PHONE?12:18);L=C+tail;
+    const s={name,start:t,len:L,push:rr(1.08,1.16),dx:rr(-70,70),dy:rr(-35,35),
+      base:(d.alts.length&&chance(0.4))?name+'_alt'+pick(d.alts):d.base,
+      fiB:rr(3.5,6)*slow,foB:rr(3.5,6)*slow,layers:d.layers.map((n,i)=>({n,s:L*rr(0.06,0.11)*(i+1),fi:rr(5,8)*slow,eo:L*rr(0.04,0.14)})),
+      br:[],pu:[],mood:{warm:rr(-0.25,0.25),bright:rr(-0.04,0.04)}};
+    let bt=L*rr(0.22,0.32);while(bt<L-6){const up=rr(2,4.2),dn=rr(2,4.2);s.br.push([bt,up,rr(0.55,1)*(d.brMax||1),dn]);bt+=up+dn+rr(0.3,3)}
+    if(d.pulse){let pt=d.pulseFirst?0:rr(2,6);while(pt<L-5){const up=rr(2.5,5),dn=rr(2.5,5),hold=rr(0,3);s.pu.push([pt,up,hold,rr(0.5,1)*d.pulseMax,dn]);pt+=up+hold+dn+rr(1,6)}}
+    // slow drift to a second photo partway through (scenes without panel layers)
+    if(!d.layers.length&&d.alts.length&&(SAMPLE||chance(0.6))){const c=d.alts.map(n=>name+'_alt'+n).filter(n=>n!==s.base);s.alt2={n:pick(c),at:L*rr(0.32,0.45),fi:rr(6,9)}}
+    // fragment tail, like the film: the last stretch breaks into short cuts
+    let ct=L-tail+rr(1,3);
+    const nx=order[k+1],others=Object.keys(SC).filter(x=>x!==name&&x!==nx);
+    while(ct<L-3){const q=R();let src,dd,fd;
+      if(q<0.05){src=pick(poolOf(pick(others)));dd=ri(2,4)/24;fd=0.02}
+      else if(q<0.25&&nx){src=pick(poolOf(nx));dd=rr(0.45,0.95);fd=rr(0.06,0.18)}
+      else{src=pick(poolOf(name));dd=rr(0.45,0.95);fd=rr(0.06,0.18)}
+      p.cuts.push({n:src,at:t+ct,d:dd,fade:fd});ct+=dd+(chance(0.35)?rr(0.3,0.8):rr(1.5,5))}
+    // text
+    s.text={str,dec:chance(0.55)?{late:Array.from({length:ri(1,2)},()=>[R(),rr(2,6)]),flick:Array.from({length:ri(0,2)},()=>[R(),rr(4,14),rr(0.25,0.9)]),ling:Array.from({length:ri(1,2)},()=>[R(),rr(-3,4)])}:null,s:tx.s,fi:tx.fi,fo,fol:tx.fol,key:'p_'+name+'_'+k,rnd:mulberry32(seed^(k*7919+13))};
+    {const fp=FILM_PLACE[name];let h=fp[0],v=fp[1];if(!FIRST&&chance(0.5)){h=pick(['L','R','C']);v=pick(['low','low','mid','high'])}
+     s.place={h,v,jx:rr(-60,60),jy:rr(-30,30)}}
+    s.push2={at:pa,up:pu,hold:Math.max(1,fo-pa-pu+1),dn:rr(4,6),z:rr(1.32,1.55),zj:rr(0.95,1.08)};
+    // something happens every 8-12s through the continuous part
+    {let et=s.text.s+rr(6,9);const own=poolOf(name);while(et<C-2){if(chance(0.5))p.ghosts.push({n:pick(own),at:t+et,d:rr(2.2,3.4),pk:rr(0.3,0.5),push:rr(1.03,1.07)});
+      else p.ghosts.push({n:pick(own),at:t+et,d:rr(4,6),pk:rr(0.55,0.85),push:rr(1.04,1.1),op:'source-over'});et+=rr(8,12)}}
+    // ghosts
+    const ng=ri(1,3);for(let g=0;g<ng;g++)p.ghosts.push({n:pick(poolOf((order[k+1]&&chance(0.2))?order[k+1]:name)),at:t+rr(6,L-6),d:rr(1.6,2.8),pk:rr(0.22,0.45),push:rr(1.02,1.06)});
+    if(k<order.length-1&&chance(0.5))p.ghosts.push({n:SC[order[k+1]].base,at:t+L-rr(9,13),d:rr(1.8,2.4),pk:rr(0.25,0.4),push:1.03});
+    // memory gap / loop inside some scenes
+    if(chance(0.16))p.gaps.push({at:t+rr(L*0.3,L*0.75),d:rr(1.4,3.2)});
+    if(chance(0.14))s.loop={at:rr(L*0.3,L*0.7),back:rr(2.5,5),d:rr(2,4)};
+    p.scenes.push(s);t+=L-(ov[k+1]??0);
+  });
+  const last=p.scenes[p.scenes.length-1];
+  p.end={n:pick(ENDS),start:last.start+last.len-endOv,hold:endHold,push:rr(1.04,1.08)};
+  p.total=p.end.start+endLen;
+  // bursts (kept glitches)
+  const nb=ri(2,4);for(let b=0;b<nb;b++){let at=rr(30,p.end.start-20);const n=ri(3,6);const sAt=p.scenes.filter(x=>x.start<=at).pop()||p.scenes[0];for(let i=0;i<n;i++){const d=rr(0.06,0.11);p.bursts.push({n:pick(poolOf(chance(0.05)?pick(Object.keys(SC)):sAt.name)),at,d,a:rr(0.55,0.9)});at+=d+rr(0,0.05)}}
+  // flash words
+  const nw=ri(3,6);for(let i=0;i<nw;i++){const str=pick(FLASH_WORDS);p.words.push({str,at:rr(28,p.end.start-12),d:rr(2.2,3.6),x:rr(0.3,0.7)*W,y:rr(0.3,0.62)*H,key:'w'+i,rnd:mulberry32(seed^(i*104729+77))})}
+  // audio plan
+  const a=p.audio,sc=p.total/390,J=()=>rr(-2,2),tot=p.total;
+  a.unk=[{src:'unknown_soft',at:0.5,off:48.46,len:14,g:1,fi:1.5,fo:4}];
+  const bAt=Math.min(152*sc+J(),156),sAt=288*sc+J();
+  a.unk.push({src:'unknown_eq',at:0,off:0,len:Math.min(164.8,bAt+8),g:0.75,fi:3,fo:6});
+  const need=sAt-bAt+6;a.unk.push({src:'unknown_eq',at:bAt,off:Math.max(0,Math.min(19.96,164.8-need)),len:need,g:1,fi:5,fo:6});
+  a.unk.push({src:'unknown_soft',at:sAt,off:0,len:tot-sAt,g:1,fi:5,fo:9});
+  a.candle=[{src:'candle',at:14+J(),off:0,len:124.5,g:0.75,fi:5,fo:6},{src:'candle',at:126*sc+J(),off:0,len:116,g:1,fi:6,fo:6},{src:'candle',at:238*sc+J(),off:0,len:Math.min(116,tot-238*sc-20),g:1,fi:6,fo:7}];
+  const v1=chance(0.5)?'voice_spectral':'voice_beholding',v2=v1==='voice_spectral'?'voice_beholding':'voice_spectral';
+  const vo=n=>n==='voice_spectral'?rr(52,62):rr(92,100);
+  a.voices=[{src:v1,at:tot-38+J(),off:vo(v1),len:32,g:1,fi:5,fo:6},{src:v2,at:tot-34+J(),off:vo(v2),len:30,g:1,fi:5,fo:6}];
+  if(chance(0.4)){const v=chance(0.5)?'voice_spectral':'voice_beholding';a.voices.push({src:v,at:rr(140,tot-120),off:vo(v)-30,len:rr(18,26),g:0.7,fi:6,fo:7})}
+  a.whispers=[];const nwh=ri(3,4);for(let i=0;i<nwh;i++)a.whispers.push({at:(p.total-30)*(i+rr(0.25,0.8))/nwh+10,g:rr(0.18,0.28)});
+  a.amb=p.weather==='rain'?[['amb_rain',0.22],['amb_room',0.05]]:p.weather==='wind'?[['amb_wind',0.22],['amb_tone',0.06]]:[['amb_room',0.08],['amb_tone',0.05]];
+  p.rain=p.weather==='rain'?{amt:rr(0.4,1)}:null;
+  return p}
+
+// ---------------- audio ----------------
+let actx=null,master=null,musicBus=null,lowShelf=null,t0=0,playing=false;const media=[];
+function applyMix(){if(!musicBus)return;musicBus.gain.value=TUNE.music;lowShelf.gain.value=TUNE.musicLow}
+const endT=()=>P.stopAt??P.total;
+async function decodeAll(){for(const n of decodeSnd){if(BUF[n]||!raw[n])continue;try{BUF[n]=await actx.decodeAudioData(raw[n].slice(0))}catch(e){}}}
+function envGain(g,T,gain,fi,fo,E){const now=actx.currentTime,m=Math.max(T+fi,E-fo);
+  const v=x=>x<=T?0.0001:x<T+fi?Math.max(0.0001,gain*(x-T)/fi):x<m?gain:Math.max(0.0001,gain*(E-x)/fo);
+  const s0=Math.max(T,now);g.gain.setValueAtTime(v(s0),s0);for(const x of [T+fi,m,E])if(x>s0)g.gain.linearRampToValueAtTime(v(x===E?E:x),x)}
+function playBuf(n,at,gain,o={}){const b=BUF[n];if(!b)return;const s=actx.createBufferSource();s.buffer=b;s.loop=!!o.loop;const g=actx.createGain();s.connect(g).connect(master);
+  const T=t0+at,len=o.len??b.duration,E=Math.min(T+len,t0+endT()),now=actx.currentTime;if(E<=now)return;envGain(g,T,gain,o.fi??1.5,o.fo??2.5,E);
+  let off=o.off||0;if(T<now){off+=now-T;if(o.loop)off%=b.duration}s.start(Math.max(T,now),off);s.stop(E+0.1)}
+function cueMedia(c){const el=new Audio();el.src=A+'snd/'+c.src+'.mp3';el.preload='auto';el.crossOrigin='anonymous';
+  let src;try{src=actx.createMediaElementSource(el)}catch(e){}const g=actx.createGain();g.gain.value=0.0001;if(src)src.connect(g).connect(musicBus);
+  c.el=el;c.gn=g;c.started=false;media.push(c);try{el.load()}catch(e){}}
+function scheduleAudio(){const a=P.audio;master=actx.createGain();master.connect(actx.destination);
+  musicBus=actx.createGain();lowShelf=actx.createBiquadFilter();lowShelf.type='lowshelf';lowShelf.frequency.value=160;musicBus.connect(lowShelf).connect(master);applyMix();
+  const now=actx.currentTime;master.gain.setValueAtTime(1,now);master.gain.setValueAtTime(1,t0+endT()-(SAMPLE?3:8));master.gain.linearRampToValueAtTime(0.0001,t0+endT()-0.3);
+  a.whispers.forEach(w=>playBuf('whisper',w.at,w.g,{fi:1.2,fo:2.5}));
+  a.amb.forEach(([n,g])=>playBuf(n,1,g,{loop:true,len:endT(),fi:5,fo:7,off:rr(0,40)}));
+  media.length=0;[...a.unk,...a.candle,...a.voices].forEach(cueMedia)}
+function mediaTick(t){for(const c of media){if(c.started)continue;if(t>=c.at-0.15){c.started=true;if(t>c.at+c.len-1)continue;const el=c.el;const late=Math.max(0,t-c.at);
+  try{el.currentTime=c.off+late}catch(e){}const rem=c.len-late;
+  const now=actx.currentTime,T=Math.max(now,t0+c.at);envGain(c.gn,T,c.g,late>0?1.5:c.fi,c.fo,Math.min(T+rem,t0+endT()));el.play().catch(()=>{});
+  c.endAt=c.at+c.len+0.5}}
+  for(const c of media){if(c.started&&!c.done&&c.endAt&&t>c.endAt){c.done=true;try{c.el.pause()}catch(e){}}}}
+function unlockMedia(){for(const c of media){const el=c.el;const p=el.play();if(p&&p.then)p.then(()=>{if(!c.started)el.pause()}).catch(()=>{})}}
+
+// ---------------- render ----------------
+function drawImg(img,alpha,push,dx,dy,prog,op){if(!img||alpha<=0.003)return;const sc=1+(push-1)*prog,w=W*sc,h=H*sc;
+  ctx.globalAlpha=clamp(alpha);if(op)ctx.globalCompositeOperation=op;ctx.drawImage(img,(W-w)/2+dx*prog,(H-h)/2+dy*prog,w,h);
+  ctx.globalAlpha=1;if(op)ctx.globalCompositeOperation='source-over'}
+function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.length===5?q:[q[0],q[1],0,q[2],q[3]];
+  if(lt>=b&&lt<=b+up+hold+dn)v=Math.max(v,lt<b+up?pk*smooth((lt-b)/up):lt<b+up+hold?pk:pk*(1-smooth((lt-b-up-hold)/dn)))}return v}
+function fitW(){const r=cv.getBoundingClientRect();return Math.min(r.width,r.height*16/9)||1920}
+function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return document.body.classList.contains('fill')?540+r.height/sc/2:1080}
+function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
+function dispScale(){const r=cv.getBoundingClientRect();return document.body.classList.contains('fill')?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
+const lumC=document.createElement('canvas');lumC.width=192;lumC.height=108;const lumX=lumC.getContext('2d',{willReadFrequently:true});
+function regionLum(img,tb){if(!img)return 0;try{lumX.clearRect(0,0,192,108);lumX.drawImage(img,0,0,192,108);
+  const x=clamp(Math.floor((tb.x0-40)/10),0,191),y=clamp(Math.floor((tb.y0-tb.size*1.2)/10),0,107),w=clamp(Math.ceil((tb.plan.w+80)/10),1,192-x),h=clamp(Math.ceil(((tb.plan.n-1)*tb.plan.lh+tb.size*2.2)/10),1,108-y);
+  const d=lumX.getImageData(x,y,w,h).data;let sum=0;for(let i=0;i<d.length;i+=4)sum+=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]);return sum/(d.length/4)/255}catch(e){return 0}}
+function textBlock(s){const size=PHONE?Math.round(7.5/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
+  const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
+  let x0=pl.h==='R'?W-110-bw:pl.h==='C'?(W-bw)/2-W*0.08:110;x0=clamp(x0+pl.jx,90,W-90-bw);
+  let y0=pl.v==='high'?vT+110+size:pl.v==='mid'?H*0.5-bh/2:Math.min(944,vB-70)-bh;y0=clamp(y0+pl.jy,vT+90+size,vB-70-bh);
+  return{plan,x0,y0,size,cx:x0+bw/2,cy:y0+bh/2-size*0.3}}
+function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
+  if(s.loop&&lt>s.loop.at&&lt<s.loop.at+s.loop.d)lt-=s.loop.back;
+  const prog=clamp(lt/L);const tb=textBlock(s);
+  // camera: push toward the text so it can be read
+  let k=0;const q=s.push2;const minZ=q?(PHONE?Math.min(2.5,17/(dispScale()*tb.size)):Math.max(1,TUNE.textEnd*(q.zj||1)/tb.size)):1;if(q&&TUNE.pushIn>0){const u=lt-q.at;if(u>0)k=u<q.up?smooth(u/q.up):u<q.up+q.hold?1:1-smooth((u-q.up-q.hold)/q.dn)}
+  const bw=tb.plan.w+40,zCap=Math.max(1,(W-140)/bw);const z=1+Math.max(0,Math.min((q?(PHONE?Math.max(q.z,minZ):minZ):1),zCap)-1)*(q?TUNE.pushIn:0)*k;if(TEST)window.__z={z,k,minZ,zCap,size:tb.size,w:tb.plan.w,ds:dispScale()};ctx.save();
+  if(k>0.001){const Fx=tb.cx,Fy=tb.cy;let Sx=lerp(Fx,W*0.46,k),Sy=lerp(Fy,H*0.66,k);
+    Sx=Math.min(Fx*z,Math.max(W-(W-Fx)*z,Sx));Sy=Math.min(Fy*z,Math.max(H-(H-Fy)*z,Sy));
+    Sx=Math.max(70+z*(Fx-tb.x0),Math.min(W-70-z*(tb.x0+tb.plan.w-Fx),Sx));
+    const vb=visBottom()-40,bot=tb.y0+(tb.plan.n-1)*tb.plan.lh+tb.size*0.35;Sy=Math.min(Sy,vb-z*(bot-Fy));const vt=1080-visBottom()+40,top=tb.y0-tb.size;Sy=Math.max(Sy,vt+z*(Fy-top));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
+  const sceneA=env(lt,0,s.fiB,L,s.foB);
+  drawImg(IMG[s.base]||IMG[d.base],sceneA,s.push,s.dx,s.dy,prog);
+  if(s.alt2)drawImg(IMG[s.alt2.n],env(lt,s.alt2.at,s.alt2.fi,L,s.foB),s.push,s.dx,s.dy,prog);
+  s.layers.forEach(l=>drawImg(IMG[l.n],env(lt,l.s,l.fi,L-l.eo,4),s.push,s.dx,s.dy,prog));
+  if(d.pulse)drawImg(IMG[d.pulse],pulseVal(s.pu,lt)*sceneA,s.push,s.dx,s.dy,prog);
+  if(d.breathe)drawImg(IMG[d.breathe],pulseVal(s.br,lt)*env(lt,0,1,L,4),s.push,s.dx,s.dy,prog);
+  if(TUNE.darken>0&&k>0.01){if(s.lum===undefined)s.lum=regionLum(IMG[s.base]||IMG[d.base],tb);const dk=clamp((s.lum-0.18)/0.3)*TUNE.darken*k;
+    if(dk>0.01){const bw2=Math.min(tb.plan.w,9999),bh2=(tb.plan.n-1)*tb.plan.lh+tb.size*1.4,cx=tb.x0+bw2/2,cy=tb.y0+bh2/2-tb.size*0.7;
+      const rx=bw2/2+tb.size*5,ry=Math.max(bh2/2+tb.size*5,rx*0.42);ctx.save();ctx.translate(cx,cy);ctx.scale(1,ry/rx);const r=rx;const gr=ctx.createRadialGradient(0,0,0,0,0,r);
+      gr.addColorStop(0,'rgba(4,6,4,'+(0.7*dk)+')');gr.addColorStop(0.45,'rgba(4,6,4,'+(0.5*dk)+')');gr.addColorStop(0.75,'rgba(4,6,4,'+(0.2*dk)+')');gr.addColorStop(1,'rgba(4,6,4,0)');ctx.fillStyle=gr;ctx.fillRect(-r,-r,2*r,2*r);ctx.restore()}}
+  drawText(tb.plan,tb.x0,tb.y0,tb.size,{t:lt,dec:s.text.dec,fadeIn:[s.text.s,s.text.fi],fadeOut:[s.text.fo,s.text.fol],float:1.6,alpha:0.95*env(lt,0,1,L,2)});
+  ctx.restore()}
+let flick=0,flickT=0,gi=0,grainT=0,gox=0,goy=0,dustT=0,dust=[],scratch=null,rainT=0,rainL=[];
+function moodAt(t){const m=P.mood;let w=m.warm,b=m.bright;for(const s of P.scenes){const e=env(t-s.start,0,4,s.len,4);w+=s.mood.warm*e;b+=s.mood.bright*e}return{w,b,h:m.haze}}
+const clk={base:null};
+function frame(){if(!playing)return;const at=actx.currentTime-t0+seekOff,pt=performance.now()/1000;
+  if(clk.base===null||paused||Math.abs((pt-clk.base)-at)>0.25)clk.base=pt-at;else clk.base+=((pt-at)-clk.base)*0.02;
+  const t=paused?at:pt-clk.base;mediaTick(t);
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#050705';ctx.fillRect(0,0,W,H);
+  const I=P.intro;for(const o of I.photos){const a=env(t,o.s,2.8,o.e,2.8)*0.78;drawImg(IMG[o.n],a,o.push,o.dx,o.dy,clamp((t-o.s)/(o.e-o.s)))}
+  for(const s of P.scenes)drawScene(s,t);
+  for(const g of P.ghosts){const lt=t-g.at;if(lt<0||lt>g.d)continue;const a=lt<g.d*0.42?smooth(lt/(g.d*0.42)):1-smooth((lt-g.d*0.42)/(g.d*0.58));drawImg(IMG[g.n],a*g.pk,g.push,0,0,lt/g.d,g.op||'screen')}
+  const E=P.end,el=t-E.start;if(el>0)drawImg(IMG[E.n],env(el,0,4,4+E.hold+3.5,3.2),E.push,0,0,clamp(el/(E.hold+7.5)));
+  for(const b of P.bursts)if(t>=b.at&&t<b.at+b.d)drawImg(IMG[b.n],b.a,1.02,0,0,0);
+  for(const c of P.cuts){const u=t-c.at;if(u<0||u>c.d)continue;drawImg(IMG[c.n],Math.min(smooth(u/c.fade),smooth((c.d-u)/c.fade)),1.02,0,0,0)}
+  if(t<I.len+1){
+    drawText(glyphPlan('t1','nobody remembers. dad does.',92,'center',0,mulberry32(seed^11)),W/2,H*0.47,92,{t,byLetter:true,fadeIn:I.t1.fi,fadeOut:I.t1.fo,float:3.5});
+    drawText(glyphPlan('t2','Photos and Story Experience',52,'center',0,mulberry32(seed^22)),W/2,H*0.47,52,{t,byLetter:true,fadeIn:I.t2.fi,fadeOut:I.t2.fo,float:2.5});
+    drawText(glyphPlan('t3','by Jason Lindsey',36,'center',0,mulberry32(seed^33)),W/2,H*0.47+70,36,{t,byLetter:true,fadeIn:[I.t2.fi[0]+0.6,I.t2.fi[1]],fadeOut:I.t2.fo,float:2})}
+  for(const w of P.words){const lt=t-w.at;if(lt<0||lt>w.d)continue;const ws=effSize(46,20),vb2=visBottom();drawText(glyphPlan(w.key,w.str,ws,'center',0,w.rnd),w.x,clamp(w.y,1080-vb2+ws*1.5,vb2-ws),ws,{t:lt,byLetter:true,fadeIn:[0,w.d*0.35],fadeOut:[w.d*0.55,w.d*0.4],float:2,alpha:0.9})}
+  if(el>E.hold*0.35){const lt=el-E.hold*0.35;const es=effSize(30,15);drawText(glyphPlan('end1','this version will never play again.',es,'center',0,mulberry32(seed^44)),W/2,Math.min(H*0.86,visBottom()-es*1.2),es,{t:lt,byLetter:true,fadeIn:[0,2.5],fadeOut:[E.hold*0.65+2,2],float:1.5,alpha:0.85})}
+  // memory gaps (drop to black)
+  for(const g of P.gaps){const lt=t-g.at;if(lt<0||lt>g.d)continue;ctx.fillStyle='rgba(5,7,5,'+(0.96*env(lt,0,0.18,g.d,0.6))+')';ctx.fillRect(0,0,W,H)}
+  // mood grade
+  const m=moodAt(t);
+  if(Math.abs(m.w)>0.02){ctx.globalCompositeOperation='soft-light';ctx.globalAlpha=Math.min(0.35,Math.abs(m.w)*0.22);ctx.fillStyle=m.w>0?'#e0a060':'#5d86d6';ctx.fillRect(0,0,W,H)}
+  if(m.b<0){ctx.globalCompositeOperation='source-over';ctx.globalAlpha=-m.b;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H)}
+  else if(m.b>0){ctx.globalCompositeOperation='screen';ctx.globalAlpha=m.b*0.6;ctx.fillStyle='#a8b0a0';ctx.fillRect(0,0,W,H)}
+  if(m.h>0.005){ctx.globalCompositeOperation='screen';ctx.globalAlpha=m.h;ctx.fillStyle='#7c8778';ctx.fillRect(0,0,W,H)}
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  // rain streaks in rainy versions
+  if(P.rain){if(t>rainT){rainL=[];const n=Math.floor(18*P.rain.amt);for(let i=0;i<n;i++)rainL.push([Math.random()*W,Math.random()*H,30+Math.random()*60]);rainT=t+1/24}
+    ctx.globalCompositeOperation='screen';ctx.strokeStyle='rgba(200,210,200,.10)';ctx.lineWidth=1;ctx.beginPath();for(const[x,y,l]of rainL){ctx.moveTo(x,y);ctx.lineTo(x-l*0.18,y+l)}ctx.stroke()}
+  // projector flicker
+  if(t>flickT){flick=Math.random()*Math.random();flickT=t+0.04+Math.random()*0.08}
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='rgba(0,0,0,'+clamp((0.03+flick*0.09)*TUNE.flicker,0,0.5)+')';ctx.fillRect(0,0,W,H);
+  // grain
+  if(TUNE.grain>0){if(t>grainT||t<grainT-1){gi=(gi+1+Math.floor(Math.random()*(grainTiles.length-1)))%grainTiles.length;gox=-Math.random()*60;goy=-Math.random()*60;grainT=t+1/24}
+    ctx.globalCompositeOperation='overlay';ctx.globalAlpha=TUNE.grain;ctx.drawImage(grainTiles[gi],gox,goy,W+60,H+60);
+    ctx.globalCompositeOperation='hard-light';ctx.globalAlpha=TUNE.grain*0.55;ctx.drawImage(grainTiles[(gi+5)%grainTiles.length],-60-gox,-60-goy,W+60,H+60)}
+  // dust + scratches
+  if(t>dustT){dust=[];const n=Math.random()<0.55?Math.floor(Math.random()*4):0;for(let i=0;i<n;i++)dust.push([Math.random()*W,Math.random()*H,0.6+Math.random()*2.2,0.25+Math.random()*0.45,0.6+Math.random()*0.8]);
+    scratch=Math.random()<0.035?[Math.random()*W,0.05+Math.random()*0.12]:null;dustT=t+1/24}
+  ctx.globalCompositeOperation='screen';ctx.fillStyle='#d8d6cc';for(const d of dust){ctx.globalAlpha=d[3];ctx.beginPath();ctx.ellipse(d[0],d[1],d[2],d[2]*d[4],0,0,6.283);ctx.fill()}
+  if(scratch){ctx.globalAlpha=scratch[1];ctx.fillRect(scratch[0],0,1.2,H)}
+  if(IMG.vignette&&TUNE.vignette>0){ctx.globalCompositeOperation='multiply';ctx.globalAlpha=TUNE.vignette;ctx.drawImage(IMG.vignette,0,0,W,H)}
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  if(t>=endT()){finish();return}
+  requestAnimationFrame(frame)}
+let seekOff=0,paused=false;
+const portrait=()=>innerHeight>innerWidth;
+function checkRotate(){const need=PHONE&&portrait();document.getElementById('rotate').classList.toggle('show',need);
+  if(!playing)return;if(need&&!paused){paused=true;try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
+  else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
+addEventListener('resize',checkRotate);
+addEventListener('pointerdown',()=>{if(actx&&actx.state==='suspended'&&!paused)actx.resume().catch(()=>{})});addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
+function finish(){if(!playing)return;playing=false;document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
+  try{master&&master.disconnect()}catch(e){}
+  document.getElementById('vnum2').textContent=fmtV(seed);document.getElementById('end').classList.remove('hide')}
+async function begin(){
+  if(PHONE&&portrait()){checkRotate();return}
+  let rs=null;try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();rs=actx.resume()}catch(e){}
+  if(PHONE){try{const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;if(fn){const r=fn.call(el);if(r&&r.then)r.then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}}catch(e){}}
+  try{await rs}catch(e){}
+  await decodeAll();P=plan();P.first=FIRST;try{localStorage.setItem('nr_seen','1')}catch(e){}FIRST=false;window.__plan=P;
+  let S=0;if(SAMPLE&&SAMPLE_SCENE==='end'){S=P.end.start-8}else if(SAMPLE){const f=P.scenes.find(x=>x.name===SAMPLE_SCENE)||P.scenes[0];S=f.start-4;P.stopAt=f.start+f.len+2}
+  t0=actx.currentTime+1.2-S;seekOff=0;clk.base=null;scheduleAudio();unlockMedia();
+  document.getElementById('start').classList.add('hide');document.getElementById('end').classList.add('hide');document.body.classList.add('playing');
+  playing=true;requestAnimationFrame(frame)}
+if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
+function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
+  if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
+prepare();
+if(PHONE)document.querySelector('#start .hint').textContent='about six and a half minutes \u00b7 sound on \u00b7 best on a big screen';
+checkRotate();
+go.addEventListener('click',begin);
+document.getElementById('again').addEventListener('click',()=>{prepare();document.getElementById('end').classList.add('hide');document.getElementById('start').classList.remove('hide')});
+document.getElementById('stop').addEventListener('click',()=>finish());
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)finish()});
+window.addEventListener('pagehide',()=>{if(playing)finish()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&playing&&!document.fullscreenElement)finish()});
+document.getElementById('fs').addEventListener('click',()=>{const el=document.documentElement;
+  try{const r=document.fullscreenElement?document.exitFullscreen():(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.catch)r.catch(()=>{})}catch(e){}});
+ctx.fillStyle='#050705';ctx.fillRect(0,0,W,H);
+})();
+</script>
+</body>
+</html>
