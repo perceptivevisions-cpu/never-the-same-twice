@@ -488,10 +488,16 @@ prepare();
 // ---- start screen: the film's own photos, slow push and soft blurry dissolves, film grain ----
 (()=>{const bc=document.getElementById('bgc'),bx=bc.getContext('2d'),BW=960,BH=540;bc.width=BW;bc.height=BH;
   const pool=[...INTRO];for(const k in SC){pool.push(SC[k].base);SC[k].alts.forEach(n=>pool.push(k+'_alt'+n))}
-  const blurC={};function blurOf(n){if(blurC[n])return blurC[n];const img=IMG[n];const t=document.createElement('canvas');t.width=64;t.height=36;t.getContext('2d').drawImage(img,0,0,64,36);
-    const c=document.createElement('canvas');c.width=BW/2;c.height=BH/2;const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(t,0,0,BW/2,BH/2);return blurC[n]=c}
-  let last=null;function makeLayer(first){const ready=pool.filter(n=>IMG[n]&&n!==last);if(!ready.length)return null;const n=ready[Math.floor(Math.random()*ready.length)];last=n;
-    return{n,img:IMG[n],blur:blurOf(n),born:performance.now()/1000-(first?1.5:0),life:13+Math.random()*4,fade:4.5,dx:(Math.random()-.5)*50,dy:(Math.random()-.5)*28,s0:1.03,s1:1.1+Math.random()*0.06}}
+  const t1=document.createElement('canvas');t1.width=36;t1.height=20;const x1=t1.getContext('2d',{willReadFrequently:true});
+  const t2=document.createElement('canvas');t2.width=14;t2.height=8;const x2=t2.getContext('2d');
+  function up(src){const c=document.createElement('canvas');c.width=BW/2;c.height=BH/2;const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(src,0,0,BW/2,BH/2);return c}
+  let last=null;function makeLayer(first){const ready=pool.filter(n=>IMG[n]&&n!==last);if(!ready.length)return null;const n=ready[Math.floor(Math.random()*ready.length)];last=n;const img=IMG[n];
+    // a close crop with some light and contrast, softened until the place can't be named
+    let best=null,bs=-1;for(let k=0;k<7;k++){const z=2.6+Math.random()*2.4,cw=img.naturalWidth/z,ch=img.naturalHeight/z,cx=Math.random()*(img.naturalWidth-cw),cy=Math.random()*(img.naturalHeight-ch);
+      x1.clearRect(0,0,36,20);x1.drawImage(img,cx,cy,cw,ch,0,0,36,20);let d;try{d=x1.getImageData(0,0,36,20).data}catch(e){best=[cx,cy,cw,ch];break}
+      let sm=0,sq=0,m=d.length/4;for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/765;sm+=l;sq+=l*l}const mu=sm/m,sd=Math.sqrt(Math.max(0,sq/m-mu*mu)),sc=sd*2+Math.min(mu,0.45)*1.5-Math.max(0,mu-0.5)*2;if(sc>bs){bs=sc;best=[cx,cy,cw,ch]}}
+    x1.clearRect(0,0,36,20);x1.drawImage(img,...best,0,0,36,20);const soft=up(t1);x2.clearRect(0,0,14,8);x2.drawImage(t1,0,0,14,8);const blur=up(t2);
+    return{n,img:soft,blur,born:performance.now()/1000-(first?1.5:0),life:13+Math.random()*4,fade:4.5,dx:(Math.random()-.5)*50,dy:(Math.random()-.5)*28,s0:1.03,s1:1.1+Math.random()*0.06}}
   const layers=[];let next=0,gi2=0,gt=0,gx=0,gy=0;const vig=()=>IMG.vignette;
   function shown(){return!document.getElementById('start').classList.contains('hide')}
   function draw(){if(shown()){const now=performance.now()/1000;
@@ -501,8 +507,8 @@ prepare();
         const u=age/L.life,inA=smooth(age/L.fade),outA=1-smooth((age-(L.life-L.fade))/L.fade),a=Math.min(inA,outA),
           bl=1-Math.min(smooth(age/(L.fade*1.1)),1-smooth((age-(L.life-L.fade*1.1))/(L.fade*1.1)));
         const sc=L.s0+(L.s1-L.s0)*u,w=BW*sc,h=BH*sc,x=(BW-w)/2+L.dx*u,y=(BH-h)/2+L.dy*u;
-        bx.globalAlpha=a*(1-bl);bx.drawImage(L.img,x,y,w,h);bx.globalAlpha=a*bl;bx.drawImage(L.blur,x,y,w,h)}
-      bx.globalAlpha=0.42;bx.fillStyle='#050705';bx.fillRect(0,0,BW,BH);
+        bx.globalAlpha=a*(1-bl);bx.drawImage(L.img,x,y,w,h);bx.globalAlpha=a*bl;bx.drawImage(L.blur,x,y,w,h);bx.globalCompositeOperation='screen';bx.globalAlpha=a*0.2;bx.drawImage(L.img,x,y,w,h);bx.globalCompositeOperation='source-over'}
+      bx.globalAlpha=0.24;bx.fillStyle='#050705';bx.fillRect(0,0,BW,BH);
       if(vig()){bx.globalCompositeOperation='multiply';bx.globalAlpha=0.9;bx.drawImage(vig(),0,0,BW,BH)}
       if(now>gt){gi2=Math.floor(Math.random()*grainTiles.length);gx=-Math.random()*40;gy=-Math.random()*40;gt=now+1/24}
       bx.globalCompositeOperation='overlay';bx.globalAlpha=TUNE.grain*1.6;bx.drawImage(grainTiles[gi2],gx,gy,BW+40,BH+40);
