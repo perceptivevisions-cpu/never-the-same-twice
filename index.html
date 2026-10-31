@@ -18,6 +18,7 @@
   html,body{margin:0;height:100%;background:#050705;overflow:hidden;color:#e8e4d8;font-family:Georgia,serif}
   #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050705}
   canvas{width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;display:block;background:#050705}
+  body.fill canvas{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;object-fit:cover}
   .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
     background:radial-gradient(ellipse at 50% 45%,#0d120d 0%,#050705 70%);transition:opacity 1.6s ease;padding:6vh 8vw;box-sizing:border-box}
   .screen.hide{opacity:0;pointer-events:none}
@@ -37,6 +38,10 @@
     text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
   #stop{position:fixed;right:150px;bottom:16px;font-size:11px;letter-spacing:.16em;padding:.5em 1em;opacity:0;transition:opacity .6s;text-transform:uppercase;color:#e8e4d8;background:transparent;border:1px solid rgba(232,228,216,.3);cursor:pointer;font-family:Georgia,serif}
   body.playing:hover #fs,body.playing:hover #stop{opacity:.55}
+  body.fill.playing #fs,body.fill.playing #stop{opacity:0;pointer-events:none}
+  body.fill.playing.tapped #fs,body.fill.playing.tapped #stop{opacity:.55;pointer-events:auto}
+  body.nofs #fs{display:none}
+  body.nofs #stop{right:18px}
   #rotate{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#050705;text-align:center;padding:10vw}
   #rotate.show{display:flex}
   #rotate p{font-family:'JasonBrush',Georgia,serif;font-size:clamp(28px,9vw,44px);margin:0;color:#e8e4d8;line-height:1.2}
@@ -118,7 +123,10 @@ const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),s
 
 // ---------------- content ----------------
 const SAMPLE=/sample/.test(location.hash);
-const PHONE=/phone/.test(location.hash)||/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
+const PHONE0=/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
+const PHONE=/phone/.test(location.hash)||PHONE0;if(PHONE)document.body.classList.add('fill');
+if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen)document.body.classList.add('nofs');
+let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
 const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
 const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
@@ -341,17 +349,21 @@ function drawImg(img,alpha,push,dx,dy,prog,op){if(!img||alpha<=0.003)return;cons
   ctx.globalAlpha=1;if(op)ctx.globalCompositeOperation='source-over'}
 function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.length===5?q:[q[0],q[1],0,q[2],q[3]];
   if(lt>=b&&lt<=b+up+hold+dn)v=Math.max(v,lt<b+up?pk*smooth((lt-b)/up):lt<b+up+hold?pk:pk*(1-smooth((lt-b-up-hold)/dn)))}return v}
-function effSize(base,minCss){const cw=cv.getBoundingClientRect().width||1920;return Math.max(base,Math.round(minCss*1920/cw))}
+function fitW(){const r=cv.getBoundingClientRect();return Math.min(r.width,r.height*16/9)||1920}
+function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return document.body.classList.contains('fill')?540+r.height/sc/2:1080}
+function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
 function textBlock(s){const size=effSize(TUNE.textSize,15),mw=Math.min(1700,Math.round(1040*Math.max(1,size/26)));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
-  const x0=110,yb=944,y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,mw)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
+  const x0=110,yb=Math.min(944,visBottom()-70),y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,mw)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
 function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
   if(s.loop&&lt>s.loop.at&&lt<s.loop.at+s.loop.d)lt-=s.loop.back;
   const prog=clamp(lt/L);const tb=textBlock(s);
   // camera: push toward the text so it can be read
   let k=0;const q=s.push2;if(q&&TUNE.pushIn>0){const u=lt-q.at;if(u>0)k=u<q.up?smooth(u/q.up):u<q.up+q.hold?1:1-smooth((u-q.up-q.hold)/q.dn)}
-  const z=1+(q?(q.z-1)*TUNE.pushIn:0)*k;ctx.save();
+  const bw=tb.plan.w+40,zCap=Math.max(1,(W-140)/bw);const z=1+Math.max(0,Math.min((q?q.z:1),zCap)-1)*(q?TUNE.pushIn:0)*k;ctx.save();
   if(k>0.001){const Fx=tb.cx,Fy=tb.cy;let Sx=lerp(Fx,W*0.46,k),Sy=lerp(Fy,H*0.66,k);
-    Sx=Math.min(Fx*z,Math.max(W-(W-Fx)*z,Sx));Sy=Math.min(Fy*z,Math.max(H-(H-Fy)*z,Sy));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
+    Sx=Math.min(Fx*z,Math.max(W-(W-Fx)*z,Sx));Sy=Math.min(Fy*z,Math.max(H-(H-Fy)*z,Sy));
+    Sx=Math.max(70+z*(Fx-tb.x0),Math.min(W-70-z*(tb.x0+tb.plan.w-Fx),Sx));
+    const vb=visBottom()-40,bot=tb.y0+(tb.plan.n-1)*tb.plan.lh+tb.size*0.35;Sy=Math.min(Sy,vb-z*(bot-Fy));ctx.translate(Sx,Sy);ctx.scale(z,z);ctx.translate(-Fx,-Fy)}
   const sceneA=env(lt,0,s.fiB,L,s.foB);
   drawImg(IMG[s.base]||IMG[d.base],sceneA,s.push,s.dx,s.dy,prog);
   if(s.alt2)drawImg(IMG[s.alt2.n],env(lt,s.alt2.at,s.alt2.fi,L,s.foB),s.push,s.dx,s.dy,prog);
