@@ -251,7 +251,7 @@ function plan(){
   const p={scenes:[],ghosts:[],bursts:[],cuts:[],words:[],gaps:[],loops:[],audio:{}};
   p.mood={warm:rr(-1,1),bright:rr(-0.1,0.05),haze:rr(0,0.12),pace:R()};
   const wx=R();p.weather=wx<0.36?'rain':wx<0.72?'wind':'still';
-  p.T=PHONE?rr(270,300):390+rr(-30,30);
+  p.T=PHONE?rr(270,300):rr(302,318);
   // intro
   const iLen=rr(14,17.5),io=shuffle(INTRO).slice(0,ri(2,4));
   p.intro={len:iLen,photos:io.map((n,i)=>({n,s:i*iLen/io.length-1,e:(i+1)*iLen/io.length+2,push:rr(1.03,1.08),dx:rr(-16,16),dy:rr(-9,9)})),
@@ -269,8 +269,8 @@ function plan(){
     const L0=LINES[name];const useAlt=!chance(0.5)&&!FIRST;let str=useAlt?pick(L0.a):L0.o;
     const words=str.split(/\s+/).filter(Boolean).length,hold=clamp(2+words/3,5,20)*TUNE.readTime;
     const tx={s:rr(4,7),fi:rr(3,4.5),fol:rr(4,6)},pa=tx.s+tx.fi+rr(1,2.5),pu=rr(5,7.5),fo=pa+pu+hold;
-    const C=Math.max(PHONE?rr(25,30):rr(38,42),fo+tx.fol+2);
-    const tail=clamp(L-C,PHONE?8:11,PHONE?12:24);L=C+tail;
+    const C=Math.max(PHONE?rr(25,30):rr(32,36),fo+tx.fol+2);
+    const tail=clamp(L-C,PHONE?8:10,PHONE?12:18);L=C+tail;
     const s={name,start:t,len:L,push:rr(1.08,1.16),dx:rr(-70,70),dy:rr(-35,35),
       base:(d.alts.length&&chance(0.4))?name+'_alt'+pick(d.alts):d.base,
       fiB:rr(3.5,6)*slow,foB:rr(3.5,6)*slow,layers:d.layers.map((n,i)=>({n,s:L*rr(0.06,0.11)*(i+1),fi:rr(5,8)*slow,eo:L*rr(0.04,0.14)})),
@@ -453,7 +453,7 @@ async function begin(){
   playing=true;requestAnimationFrame(frame)}
 if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
-  if(SAMPLE){document.querySelector('#start .lede').textContent='Ending sample: the last few seconds of the final scene, the end photo and the closing line, about 30 seconds.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
+  if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
 if(PHONE)document.querySelector('#start .hint').textContent='about six and a half minutes \u00b7 sound on \u00b7 best on a big screen';
 checkRotate();
