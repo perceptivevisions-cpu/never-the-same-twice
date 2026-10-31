@@ -129,6 +129,7 @@ if(!document.documentElement.requestFullscreen&&!document.documentElement.webkit
 let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
 const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
+const FILM_PLACE={bedroom:['R','low'],fjord:['C','low'],barn:['R','low'],forest:['R','low'],skywater:['L','low'],cloud:['L','low'],lake:['L','mid']};
 const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
 const FL=a=>a.map(x=>typeof x==='number'?'fl_ISU-'+x:'fl_'+x);
 const FLASH_BY={forest:FL([3,19,46,47,49,62,80,81,115,116,117,118,135,136,137,138,139,145,151]),
@@ -288,6 +289,8 @@ function plan(){
       p.cuts.push({n:src,at:t+ct,d:dd,fade:fd});ct+=dd+(chance(0.35)?rr(0.3,0.8):rr(1.5,5))}
     // text
     s.text={str,dec:chance(0.55)?{late:Array.from({length:ri(1,2)},()=>[R(),rr(2,6)]),flick:Array.from({length:ri(0,2)},()=>[R(),rr(4,14),rr(0.25,0.9)]),ling:Array.from({length:ri(1,2)},()=>[R(),rr(-3,4)])}:null,s:tx.s,fi:tx.fi,fo,fol:tx.fol,key:'p_'+name+'_'+k,rnd:mulberry32(seed^(k*7919+13))};
+    {const fp=FILM_PLACE[name];let h=fp[0],v=fp[1];if(!FIRST&&chance(0.5)){h=pick(['L','R','C']);v=pick(['low','low','mid','high'])}
+     s.place={h,v,jx:rr(-60,60),jy:rr(-30,30)}}
     s.push2={at:pa,up:pu,hold:Math.max(1,fo-pa-pu+1),dn:rr(4,6),z:rr(1.32,1.55)};
     // something happens every 8-12s through the continuous part
     {let et=s.text.s+rr(6,9);const own=poolOf(name);while(et<C-2){if(chance(0.5))p.ghosts.push({n:pick(own),at:t+et,d:rr(2.2,3.4),pk:rr(0.3,0.5),push:rr(1.03,1.07)});
@@ -362,7 +365,10 @@ function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.widt
 function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
 function dispScale(){const r=cv.getBoundingClientRect();return document.body.classList.contains('fill')?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
 function textBlock(s){const size=PHONE?Math.round(7.5/dispScale()):effSize(TUNE.textSize,10),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(1040*Math.max(1,size/26)));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
-  const x0=110,yb=Math.min(944,visBottom()-70),y0=yb-(plan.n-1)*plan.lh;return{plan,x0,y0,size,cx:x0+Math.min(plan.w,mw)/2,cy:y0+((plan.n-1)*plan.lh)/2-size*0.3}}
+  const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
+  let x0=pl.h==='R'?W-110-bw:pl.h==='C'?(W-bw)/2-W*0.08:110;x0=clamp(x0+pl.jx,90,W-90-bw);
+  let y0=pl.v==='high'?vT+110+size:pl.v==='mid'?H*0.5-bh/2:Math.min(944,vB-70)-bh;y0=clamp(y0+pl.jy,vT+90+size,vB-70-bh);
+  return{plan,x0,y0,size,cx:x0+bw/2,cy:y0+bh/2-size*0.3}}
 function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L=s.len,d=SC[s.name];
   if(s.loop&&lt>s.loop.at&&lt<s.loop.at+s.loop.d)lt-=s.loop.back;
   const prog=clamp(lt/L);const tb=textBlock(s);
