@@ -68,7 +68,7 @@
   <div class="ver">You are about to see version <b id="vnum">—</b></div>
   <button class="main" id="go" disabled>loading…</button>
   <div id="load"><i id="bar"></i></div>
-  <div class="hint">about six and a half minutes · sound on · best full screen</div>
+  <div class="hint">about five minutes · sound on · best full screen</div>
 </div>
 
 <div class="screen hide" id="end">
@@ -349,7 +349,7 @@ function playBuf(n,at,gain,o={}){const b=BUF[n];if(!b)return;const s=actx.create
   let off=o.off||0;if(T<now){off+=now-T;if(o.loop)off%=b.duration}s.start(Math.max(T,now),off);s.stop(E+0.1)}
 function cueMedia(c){const el=new Audio();el.src=A+'snd/'+c.src+'.mp3';el.preload='auto';el.crossOrigin='anonymous';
   let src;try{src=actx.createMediaElementSource(el)}catch(e){}const g=actx.createGain();g.gain.value=0.0001;if(src)src.connect(g).connect(musicBus);
-  c.el=el;c.gn=g;c.started=false;media.push(c);try{el.load()}catch(e){}}
+  c.el=el;c.gn=g;c.started=false;media.push(c);el.addEventListener('loadedmetadata',()=>{if(!c.started){try{el.currentTime=c.off}catch(e){}}},{once:true});try{el.load()}catch(e){}}
 function scheduleAudio(){const a=P.audio;master=actx.createGain();master.connect(actx.destination);
   musicBus=actx.createGain();lowShelf=actx.createBiquadFilter();lowShelf.type='lowshelf';lowShelf.frequency.value=160;musicBus.connect(lowShelf).connect(master);applyMix();
   const now=actx.currentTime;master.gain.setValueAtTime(1,now);master.gain.setValueAtTime(1,t0+endT()-(SAMPLE?3:8));master.gain.linearRampToValueAtTime(0.0001,t0+endT()-0.3);
@@ -358,7 +358,11 @@ function scheduleAudio(){const a=P.audio;master=actx.createGain();master.connect
   media.length=0;[...a.unk,...a.candle,...a.voices].forEach(cueMedia)}
 function mediaTick(t){for(const c of media){if(c.started)continue;if(t>=c.at-0.15){c.started=true;if(t>c.at+c.len-1)continue;const el=c.el;const late=Math.max(0,t-c.at);
   try{el.currentTime=c.off+late}catch(e){}const rem=c.len-late;
-  const now=actx.currentTime,T=Math.max(now,t0+c.at);envGain(c.gn,T,c.g,late>0?1.5:c.fi,c.fo,Math.min(T+rem,t0+endT()));el.play().catch(()=>{});
+  // fade in only once the sound is actually coming out (it may still be buffering)
+  c.gn.gain.cancelScheduledValues(0);c.gn.gain.setValueAtTime(0.0001,actx.currentTime);
+  const go=()=>{if(c.go||c.done)return;c.go=true;const now=actx.currentTime,cur=now-t0+seekOff,left=c.at+c.len-cur;if(left<1)return;
+    envGain(c.gn,now,c.g,Math.max(c.fi,late>0?1.5:c.fi),c.fo,Math.min(now+left,t0+endT()))};
+  el.addEventListener('playing',go,{once:true});setTimeout(()=>{if(!el.paused&&el.readyState>=3)go()},4000);el.play().catch(()=>{});
   c.endAt=c.at+c.len+0.5}}
   for(const c of media){if(c.started&&!c.done&&c.endAt&&t>c.endAt){c.done=true;try{c.el.pause()}catch(e){}}}}
 function unlockMedia(){for(const c of media){const el=c.el;const p=el.play();if(p&&p.then)p.then(()=>{if(!c.started)el.pause()}).catch(()=>{})}}
@@ -475,7 +479,7 @@ if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
-if(PHONE)document.querySelector('#start .hint').textContent='about six and a half minutes \u00b7 sound on \u00b7 best on a big screen';
+if(PHONE)document.querySelector('#start .hint').textContent='about five minutes \u00b7 sound on \u00b7 best on a big screen';
 checkRotate();
 go.addEventListener('click',begin);
 document.getElementById('again').addEventListener('click',()=>{prepare();document.getElementById('end').classList.add('hide');document.getElementById('start').classList.remove('hide')});
