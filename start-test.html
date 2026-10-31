@@ -23,9 +23,9 @@
     background:radial-gradient(ellipse at 50% 45%,#0d120d 0%,#050705 70%);transition:opacity 1.6s ease;padding:6vh 8vw;box-sizing:border-box}
   .screen.hide{opacity:0;pointer-events:none}
   #start{background:#050705}
-  #bgc{position:absolute;inset:0;width:100%;height:100%;z-index:0;opacity:0;transition:opacity 3s ease}
+  #bgc{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0;transition:opacity 1.2s ease}
   #bgc.on{opacity:1}
-  #start::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,rgba(5,7,5,.5) 0%,rgba(5,7,5,.2) 50%,rgba(5,7,5,.7) 100%)}
+  #start::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,rgba(5,7,5,.45) 0%,rgba(5,7,5,.15) 55%,rgba(5,7,5,.4) 100%)}
   #start>*:not(#bgc){position:relative;z-index:2}
   .jt{font-family:'JasonBrush',Georgia,serif;letter-spacing:.01em}
   .t1{font-size:clamp(34px,5.2vw,78px);opacity:.92;margin:0 0 .5em}
@@ -485,27 +485,30 @@ if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
-// ---- start screen: slow, abstract, out-of-focus light from the photos, with grain ----
-(()=>{const bc=document.getElementById('bgc'),bx=bc.getContext('2d'),BW=640,BH=360,pool=[...INTRO];for(const k in SC){pool.push(SC[k].base);if(SC[k].breathe)pool.push(SC[k].breathe)}
-  const tiny=document.createElement('canvas');tiny.width=44;tiny.height=25;const tx=tiny.getContext('2d');
-  function makeLayer(){const n=pool[Math.floor(Math.random()*pool.length)],img=IMG[n];if(!img)return null;
-    let best=null,bl=-1;for(let k=0;k<6;k++){const z=2.4+Math.random()*2.2,cw=img.naturalWidth/z,ch=img.naturalHeight/z,cx=Math.random()*(img.naturalWidth-cw),cy=Math.random()*(img.naturalHeight-ch);
-      tx.clearRect(0,0,44,25);tx.drawImage(img,cx,cy,cw,ch,0,0,44,25);let d;try{d=tx.getImageData(0,0,44,25).data}catch(e){break}let sm=0,sq=0,n=d.length/4;for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/765;sm+=l;sq+=l*l}const mu=sm/n,sd=Math.sqrt(Math.max(0,sq/n-mu*mu)),sc2=sd*2+Math.min(mu,0.45)-Math.max(0,mu-0.6);if(sc2>bl){bl=sc2;best=[cx,cy,cw,ch]}}
-    if(best){tx.clearRect(0,0,44,25);tx.drawImage(img,...best,0,0,44,25)}
-    const c=document.createElement('canvas');c.width=BW;c.height=BH;const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(tiny,0,0,BW,BH);
-    return{c,born:performance.now()/1000,life:11+Math.random()*6,dx:(Math.random()-.5)*40,dy:(Math.random()-.5)*24,s0:1.05,s1:1.18+Math.random()*0.12,peak:0.55+Math.random()*0.25}}
-  const layers=[];let next=0,gi2=0,gt=0;
-  function draw(){if(!document.getElementById('start').classList.contains('hide')||layers.length){const now=performance.now()/1000;
-      if(now>next){const L=makeLayer();if(L){layers.push(L);bc.classList.add('on')}next=now+5+Math.random()*3}
+// ---- start screen: the film's own photos, slow push and soft blurry dissolves, film grain ----
+(()=>{const bc=document.getElementById('bgc'),bx=bc.getContext('2d'),BW=960,BH=540;bc.width=BW;bc.height=BH;
+  const pool=[...INTRO];for(const k in SC){pool.push(SC[k].base);SC[k].alts.forEach(n=>pool.push(k+'_alt'+n))}
+  const blurC={};function blurOf(n){if(blurC[n])return blurC[n];const img=IMG[n];const t=document.createElement('canvas');t.width=64;t.height=36;t.getContext('2d').drawImage(img,0,0,64,36);
+    const c=document.createElement('canvas');c.width=BW/2;c.height=BH/2;const g=c.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(t,0,0,BW/2,BH/2);return blurC[n]=c}
+  let last=null;function makeLayer(first){const ready=pool.filter(n=>IMG[n]&&n!==last);if(!ready.length)return null;const n=ready[Math.floor(Math.random()*ready.length)];last=n;
+    return{n,img:IMG[n],blur:blurOf(n),born:performance.now()/1000-(first?1.5:0),life:13+Math.random()*4,fade:4.5,dx:(Math.random()-.5)*50,dy:(Math.random()-.5)*28,s0:1.03,s1:1.1+Math.random()*0.06}}
+  const layers=[];let next=0,gi2=0,gt=0,gx=0,gy=0;const vig=()=>IMG.vignette;
+  function shown(){return!document.getElementById('start').classList.contains('hide')}
+  function draw(){if(shown()){const now=performance.now()/1000;
+      if(now>next){const L=makeLayer(!layers.length);if(L){layers.push(L);bc.classList.add('on');next=now+L.life-L.fade}else next=now+0.2}
       bx.globalCompositeOperation='source-over';bx.globalAlpha=1;bx.fillStyle='#050705';bx.fillRect(0,0,BW,BH);
-      for(let i=layers.length-1;i>=0;i--){const L=layers[i],u=(now-L.born)/L.life;if(u>1){layers.splice(i,1);continue}
-        const a=Math.sin(Math.PI*u)*L.peak,sc=L.s0+(L.s1-L.s0)*u;bx.globalCompositeOperation='screen';bx.globalAlpha=a;
-        const w=BW*sc,h=BH*sc,x=(BW-w)/2+L.dx*u,y=(BH-h)/2+L.dy*u;bx.drawImage(L.c,x,y,w,h)}
-      if(now>gt){gi2=Math.floor(Math.random()*grainTiles.length);gt=now+1/24}
-      bx.globalCompositeOperation='overlay';bx.globalAlpha=0.5;bx.drawImage(grainTiles[gi2],-Math.random()*40,-Math.random()*40,BW+40,BH+40);
-      bx.globalCompositeOperation='source-over';bx.globalAlpha=0.03+Math.random()*0.05;bx.fillStyle='#000';bx.fillRect(0,0,BW,BH)}
-    if(!playing||!document.getElementById('start').classList.contains('hide'))requestAnimationFrame(draw);else{layers.length=0;bc.classList.remove('on');waitStart()}}
-  function waitStart(){const iv=setInterval(()=>{if(!document.getElementById('start').classList.contains('hide')){clearInterval(iv);next=0;requestAnimationFrame(draw)}},500)}
+      for(let i=0;i<layers.length;i++){const L=layers[i],age=now-L.born;if(age>L.life){layers.splice(i--,1);continue}
+        const u=age/L.life,inA=smooth(age/L.fade),outA=1-smooth((age-(L.life-L.fade))/L.fade),a=Math.min(inA,outA),
+          bl=1-Math.min(smooth(age/(L.fade*1.1)),1-smooth((age-(L.life-L.fade*1.1))/(L.fade*1.1)));
+        const sc=L.s0+(L.s1-L.s0)*u,w=BW*sc,h=BH*sc,x=(BW-w)/2+L.dx*u,y=(BH-h)/2+L.dy*u;
+        bx.globalAlpha=a*(1-bl);bx.drawImage(L.img,x,y,w,h);bx.globalAlpha=a*bl;bx.drawImage(L.blur,x,y,w,h)}
+      bx.globalAlpha=0.42;bx.fillStyle='#050705';bx.fillRect(0,0,BW,BH);
+      if(vig()){bx.globalCompositeOperation='multiply';bx.globalAlpha=0.9;bx.drawImage(vig(),0,0,BW,BH)}
+      if(now>gt){gi2=Math.floor(Math.random()*grainTiles.length);gx=-Math.random()*40;gy=-Math.random()*40;gt=now+1/24}
+      bx.globalCompositeOperation='overlay';bx.globalAlpha=TUNE.grain*1.6;bx.drawImage(grainTiles[gi2],gx,gy,BW+40,BH+40);
+      bx.globalCompositeOperation='hard-light';bx.globalAlpha=TUNE.grain*0.9;bx.drawImage(grainTiles[(gi2+5)%grainTiles.length],-40-gx,-40-gy,BW+40,BH+40);
+      bx.globalCompositeOperation='source-over';bx.globalAlpha=1;requestAnimationFrame(draw)}
+    else{layers.length=0;bc.classList.remove('on');next=0;const iv=setInterval(()=>{if(shown()){clearInterval(iv);requestAnimationFrame(draw)}},400)}}
   requestAnimationFrame(draw)})();
 if(PHONE)document.querySelector('#start .hint').textContent='about five minutes \u00b7 sound on \u00b7 best on a big screen';
 checkRotate();
