@@ -81,6 +81,7 @@
   <p class="jt t1" style="font-size:clamp(26px,3.4vw,52px)">that version is gone.</p>
   <p class="lede" style="margin-bottom:1.4em">Version <span id="vnum2"></span> played once and will not play again.</p>
   <button class="main" id="again">watch another</button>
+  <a class="hint" id="home" href="https://www.jasonlindsey.art/nobody-remembers" target="_top" style="display:none;margin-top:2.2em;color:inherit;text-decoration:none;border-bottom:1px solid rgba(232,228,216,.35);padding-bottom:2px">back to jasonlindsey.art</a>
 </div>
 
 <div id="rotate"><i></i><p>turn your phone sideways.</p><small>this film only plays sideways</small></div>
@@ -522,5 +523,6 @@ document.getElementById('fs').addEventListener('click',()=>{const el=document.do
 ctx.fillStyle='#050705';ctx.fillRect(0,0,W,H);
 })();
 </script>
+<script>(function(){try{if(window.self!==window.top)return;var a=document.getElementById('home');var r=document.referrer||'';var m=r.match(/^https?:\/\/(www\.)?(jasonlindsey\.(art|com))(\/[^?#]*)?/i);if(m){var d=m[2].toLowerCase();a.href=(m[4]&&m[4].length>1)?r:(d==='jasonlindsey.com'?'https://jasonlindsey.com/Short-Films/Nobody-Remembers/1':'https://www.jasonlindsey.art/nobody-remembers');a.textContent='back to '+d}a.style.display='inline-block'}catch(e){}})();</script>
 </body>
 </html>
