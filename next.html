@@ -66,7 +66,8 @@
   @media (max-height:220px){#start .lede,#start .hint{display:none}#start .ver{margin-bottom:.8em}}
   #x{position:fixed;top:14px;right:14px;z-index:30;width:44px;height:44px;border-radius:50%;border:1px solid rgba(232,228,216,.35);background:rgba(5,7,5,.35);color:#e8e4d8;
     font:300 26px/42px Georgia,serif;text-align:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .5s;padding:0}
-  body.isfs.awake #x{opacity:.75;pointer-events:auto}
+  body.isfs.awake #x,body:not(.nofs).playing.awake #x{opacity:.75;pointer-events:auto}
+  #x svg{width:18px;height:18px;display:block;margin:12px auto}
 </style>
 </head>
 <body>
@@ -530,8 +531,10 @@ window.addEventListener('pagehide',()=>{if(playing)finish()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&playing&&!document.fullscreenElement)finish()});
 document.getElementById('fs').addEventListener('click',()=>{const el=document.documentElement;
   try{const r=document.fullscreenElement?document.exitFullscreen():(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.catch)r.catch(()=>{})}catch(e){}});
-const X=document.getElementById('x');X.addEventListener('click',e=>{e.stopPropagation();exitFS()});
-const onFS=()=>document.body.classList.toggle('isfs',!!(document.fullscreenElement||document.webkitFullscreenElement));
+const X=document.getElementById('x');const inFS=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+const EXPAND='<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 6V1h5M12 1h5v5M17 12v5h-5M6 17H1v-5"/></svg>';
+X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
+const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);X.innerHTML=f?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':'Full screen')};onFS();
 document.addEventListener('fullscreenchange',onFS);document.addEventListener('webkitfullscreenchange',onFS);
 let awT=0;const wake=()=>{document.body.classList.add('awake');clearTimeout(awT);awT=setTimeout(()=>document.body.classList.remove('awake'),3000)};
 addEventListener('mousemove',wake);addEventListener('touchstart',wake,{passive:true});
