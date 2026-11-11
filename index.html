@@ -61,15 +61,22 @@
   #tune input{width:100%}
   #tune .row{display:flex;gap:8px;margin-top:10px}
   #tune button{flex:1;background:transparent;color:#d9d6cc;border:1px solid rgba(232,228,216,.3);padding:5px;cursor:pointer;font-size:11px}
+  @media (max-height:300px){.screen{padding:3vh 5vw}#start .lede{font-size:clamp(11px,3.4vh,17px);margin-bottom:.9em!important;line-height:1.4}
+    #start .ver{font-size:clamp(9px,2.6vh,13px);margin-bottom:1.2em}#start button.main{font-size:clamp(15px,5vh,26px);padding:.35em 1.6em}#start .hint{margin-top:.9em;font-size:clamp(8px,2.4vh,11px)}#load{margin-top:.8em}}
+  @media (max-height:220px){#start .lede,#start .hint{display:none}#start .ver{margin-bottom:.8em}}
+  #x{position:fixed;top:14px;right:14px;z-index:30;width:44px;height:44px;border-radius:50%;border:1px solid rgba(232,228,216,.35);background:rgba(5,7,5,.35);color:#e8e4d8;
+    font:300 26px/42px Georgia,serif;text-align:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .5s;padding:0}
+  body.isfs.awake #x{opacity:.75;pointer-events:auto}
 </style>
 </head>
 <body>
+<button id="x" aria-label="Exit full screen">&times;</button>
 <div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
 
 <div class="screen" id="start">
   <canvas id="bgc" width="640" height="360"></canvas>
-  <p class="jt t1" style="font-size:clamp(38px,5.8vw,88px);margin-bottom:.3em">nobody remembers. dad does.</p>
-  <p class="jt" style="font-size:clamp(22px,2.9vw,44px);opacity:.82;margin:0 0 .6em;line-height:1.2">this film will never play the same way twice.</p>
+  <p class="jt t1" style="font-size:clamp(20px,min(5.8vw,14vh),88px);margin-bottom:.3em">nobody remembers. dad does.</p>
+  <p class="jt" style="font-size:clamp(13px,min(2.9vw,7vh),44px);opacity:.82;margin:0 0 .6em;line-height:1.2">this film will never play the same way twice.</p>
   <p class="lede" style="margin-bottom:1.6em">the order, the images, the words, chosen as it plays.</p>
   <div class="ver">You are about to see version <b id="vnum">—</b></div>
   <button class="main" id="go" disabled>loading…</button>
@@ -390,7 +397,7 @@ const lumC=document.createElement('canvas');lumC.width=192;lumC.height=108;const
 function regionLum(img,tb){if(!img)return 0;try{lumX.clearRect(0,0,192,108);lumX.drawImage(img,0,0,192,108);
   const x=clamp(Math.floor((tb.x0-40)/10),0,191),y=clamp(Math.floor((tb.y0-tb.size*1.2)/10),0,107),w=clamp(Math.ceil((tb.plan.w+80)/10),1,192-x),h=clamp(Math.ceil(((tb.plan.n-1)*tb.plan.lh+tb.size*2.2)/10),1,108-y);
   const d=lumX.getImageData(x,y,w,h).data;let sum=0;for(let i=0;i<d.length;i+=4)sum+=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]);return sum/(d.length/4)/255}catch(e){return 0}}
-function textBlock(s){const size=PHONE?Math.round(7.5/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
+function textBlock(s){const size=PHONE?Math.round(11/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
   const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
   const[vl,vr]=visX();let x0=pl.h==='R'?vr-110-bw:pl.h==='C'?(vl+vr-bw)/2-(vr-vl)*0.08:vl+110;x0=clamp(x0+pl.jx,vl+90,Math.max(vl+90,vr-90-bw));
   let y0=pl.v==='high'?vT+110+size:pl.v==='mid'?H*0.5-bh/2:Math.min(944,vB-70)-bh;y0=clamp(y0+pl.jy,vT+90+size,vB-70-bh);
@@ -471,13 +478,16 @@ function checkRotate(){const need=PHONE&&portrait();document.getElementById('rot
   else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
 addEventListener('resize',checkRotate);
 addEventListener('pointerdown',()=>{if(actx&&actx.state==='suspended'&&!paused)actx.resume().catch(()=>{})});addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
-function finish(){if(!playing)return;playing=false;document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
+function exitFS(){try{const r=document.fullscreenElement?document.exitFullscreen():document.webkitFullscreenElement?document.webkitExitFullscreen():null;if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+function finish(){if(!playing)return;playing=false;setTimeout(exitFS,6000);document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
   try{master&&master.disconnect()}catch(e){}
   document.getElementById('vnum2').textContent=fmtV(seed);document.getElementById('end').classList.remove('hide')}
 async function begin(){
   if(PHONE&&portrait()){checkRotate();return}
   let rs=null;try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();rs=actx.resume()}catch(e){}
-  if(PHONE){try{const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;if(fn){const r=fn.call(el);if(r&&r.then)r.then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}}catch(e){}}
+  {const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;
+   if(!fn&&window.self!==window.top){try{window.top.location.href=location.href.split('#')[0]}catch(e){window.open(location.href.split('#')[0],'_top')}return}
+   if(fn&&!document.fullscreenElement&&!document.webkitFullscreenElement){try{const r=fn.call(el);if(r&&r.then)r.then(()=>PHONE&&screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}}}
   try{await rs}catch(e){}
   await decodeAll();P=plan();P.first=FIRST;try{localStorage.setItem('nr_seen','1')}catch(e){}FIRST=false;window.__plan=P;
   let S=0;if(SAMPLE&&SAMPLE_SCENE==='end'){S=P.end.start-8}else if(SAMPLE){const f=P.scenes.find(x=>x.name===SAMPLE_SCENE)||P.scenes[0];S=f.start-4;P.stopAt=f.start+f.len+2}
@@ -520,6 +530,11 @@ window.addEventListener('pagehide',()=>{if(playing)finish()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&playing&&!document.fullscreenElement)finish()});
 document.getElementById('fs').addEventListener('click',()=>{const el=document.documentElement;
   try{const r=document.fullscreenElement?document.exitFullscreen():(el.requestFullscreen||el.webkitRequestFullscreen).call(el);if(r&&r.catch)r.catch(()=>{})}catch(e){}});
+const X=document.getElementById('x');X.addEventListener('click',e=>{e.stopPropagation();exitFS()});
+const onFS=()=>document.body.classList.toggle('isfs',!!(document.fullscreenElement||document.webkitFullscreenElement));
+document.addEventListener('fullscreenchange',onFS);document.addEventListener('webkitfullscreenchange',onFS);
+let awT=0;const wake=()=>{document.body.classList.add('awake');clearTimeout(awT);awT=setTimeout(()=>document.body.classList.remove('awake'),3000)};
+addEventListener('mousemove',wake);addEventListener('touchstart',wake,{passive:true});
 ctx.fillStyle='#050705';ctx.fillRect(0,0,W,H);
 })();
 </script>
