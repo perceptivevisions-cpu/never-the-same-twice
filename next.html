@@ -67,14 +67,16 @@
   #x{position:fixed;top:14px;right:14px;z-index:30;width:44px;height:44px;border-radius:50%;border:1px solid rgba(232,228,216,.35);background:rgba(5,7,5,.35);color:#e8e4d8;
     font:300 26px/42px Georgia,serif;text-align:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .5s;padding:0}
   body.isfs.awake #x,body:not(.nofs).playing.awake #x{opacity:.75;pointer-events:auto}
+  body.nofs.playing.awake #x{opacity:.75;pointer-events:auto}
   body.ipad.isfs #x{display:none}
+  #sndhint{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:31;font:13px/1 Georgia,serif;letter-spacing:.12em;color:#e8e4d8;background:rgba(5,7,5,.55);border:1px solid rgba(232,228,216,.35);padding:9px 14px;display:none}#sndhint.show{display:block}
   body.fill.boxed #c{width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;object-fit:fill}
   body.fill.playing.awake:not(.tapped) #stop{opacity:.55;pointer-events:auto;right:18px}
   #x svg{width:18px;height:18px;display:block;margin:12px auto}
 </style>
 </head>
 <body>
-<button id="x" aria-label="Exit full screen">&times;</button>
+<button id="x" aria-label="Exit full screen">&times;</button><div id="sndhint">tap for sound</div>
 <div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
 
 <div class="screen" id="start">
@@ -142,7 +144,10 @@ const env=(t,a,fi,b,fo)=>(t<a||t>b)?0:Math.min(smooth((t-a)/Math.max(fi,1e-3)),s
 // ---------------- content ----------------
 const SAMPLE=/sample/.test(location.hash),SAMPLE_SCENE=(location.hash.match(/sample=(\w+)/)||[])[1]||'barn';
 const PHONE0=/iPhone|iPod|Android.*Mobile|Mobile.*Android/i.test(navigator.userAgent)||(matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=600);
-const PHONE=/phone/.test(location.hash)||PHONE0;document.body.classList.add('fill');
+const PHONE=/phone/.test(location.hash)||PHONE0;
+const FROM=(()=>{let f='';try{f=new URLSearchParams(location.search).get('from')||''}catch(e){}if(!f){const r=document.referrer||'';if(/jasonlindsey\.com/i.test(r))f='com';else if(/jasonlindsey\.art/i.test(r))f='art'}return f})();
+const BACK=FROM==='com'?'https://jasonlindsey.com/Short-Films/Nobody-Remembers/1':'https://www.jasonlindsey.art/nobody-remembers';
+const CANFS=!!(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen);document.body.classList.add('fill');
 if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen)document.body.classList.add('nofs');
 let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
@@ -398,8 +403,17 @@ function mediaTick(t){for(const c of media){if(c.started)continue;if(t>=c.at-0.1
   const go=()=>{if(c.go||c.done)return;c.go=true;const now=actx.currentTime,cur=now-t0+seekOff,left=c.at+c.len-cur;if(left<1)return;
     envGain(c.gn,now,c.g,Math.max(c.fi,late>0?1.5:c.fi),c.fo,Math.min(now+left,t0+endT()))};
   el.addEventListener('playing',go,{once:true});setTimeout(()=>{if(!el.paused&&el.readyState>=3)go()},4000);el.play().catch(()=>{});
+  const ct0=c.off+late;setTimeout(()=>checkCue(c,ct0,0),3500);
   c.endAt=c.at+c.len+0.5}}
   for(const c of media){if(c.started&&!c.done&&c.endAt&&t>c.endAt){c.done=true;try{c.el.pause()}catch(e){}}}}
+const FB={};function fbBuf(src){return FB[src]||(FB[src]=fetch(A+'snd/'+src+'.mp3').then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>actx.decodeAudioData(ab,res,rej))).catch(e=>{delete FB[src];throw e}))}
+function checkCue(c,ct0,tries){if(!playing||c.done||c.fb)return;const el=c.el;let adv=0;try{adv=el.currentTime-ct0}catch(e){}
+  if(!el.paused&&adv>1)return;
+  if(tries<1){el.play().catch(()=>{});setTimeout(()=>checkCue(c,ct0,tries+1),1800);return}
+  c.fb=true;try{el.pause()}catch(e){}c.gn.gain.cancelScheduledValues(0);c.gn.gain.setValueAtTime(0.0001,actx.currentTime);
+  fbBuf(c.src).then(b=>{if(!playing||c.done)return;const now=actx.currentTime,cur=now-t0+seekOff,left=Math.min(c.at+c.len-cur,b.duration-(c.off+cur-c.at));if(left<1)return;
+    const s=actx.createBufferSource();s.buffer=b;const g=actx.createGain();s.connect(g).connect(musicBus);envGain(g,now,c.g,1.5,c.fo,Math.min(now+left,t0+endT()));
+    s.start(now,Math.max(0,c.off+cur-c.at));s.stop(now+left+0.1);c.bs=s;window.__fb=(window.__fb||0)+1}).catch(()=>{})}
 function unlockMedia(){for(const c of media){const el=c.el;const p=el.play();if(p&&p.then)p.then(()=>{if(!c.started)el.pause()}).catch(()=>{})}}
 
 // ---------------- render ----------------
@@ -495,18 +509,20 @@ function frame(){if(!playing)return;const at=actx.currentTime-t0+seekOff,pt=perf
 let seekOff=0,paused=false;
 const portrait=()=>innerHeight>innerWidth;
 const EMBED=window.self!==window.top;
+if(/diag/.test(location.hash))window.__d={st:()=>({ctx:actx&&actx.state,fb:window.__fb||0,hint:document.getElementById('sndhint').classList.contains('show'),media:media.filter(c=>c.started&&!c.done).map(c=>{let ok=false;try{ok=!c.el.paused&&c.el.currentTime>0.5}catch(e){}return c.src+(c.fb?':FALLBACK':ok?':playing':':NOT PLAYING')})}),finish:()=>finish(),media:()=>media};
 function checkRotate(){const need=PHONE&&portrait()&&(!EMBED||!!(document.fullscreenElement||document.webkitFullscreenElement));document.getElementById('rotate').classList.toggle('show',need);
   if(!playing)return;if(need&&!paused){paused=true;try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
   else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
 addEventListener('resize',checkRotate);
-addEventListener('pointerdown',()=>{if(actx&&actx.state==='suspended'&&!paused)actx.resume().catch(()=>{})});addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
+addEventListener('pointerdown',()=>{if(actx&&actx.state==='suspended'&&!paused)actx.resume().then(()=>document.getElementById('sndhint').classList.remove('show')).catch(()=>{})});addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
 function exitFS(){try{const r=document.fullscreenElement?document.exitFullscreen():document.webkitFullscreenElement?document.webkitExitFullscreen():null;if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 let exitT=0;
-function finish(){if(!playing)return;playing=false;clearTimeout(exitT);exitT=setTimeout(exitFS,6000);document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
+function finish(){if(!playing)return;playing=false;try{WL&&WL.release()}catch(e){}WL=null;for(const c of media){try{c.bs&&c.bs.stop()}catch(e){}}setTimeout(()=>{for(const c of media.slice()){try{c.el.pause();c.el.removeAttribute('src');c.el.load()}catch(e){}}},400);clearTimeout(exitT);exitT=setTimeout(exitFS,6000);document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
   try{master&&master.disconnect()}catch(e){}
   document.getElementById('vnum2').textContent=fmtV(seed);document.getElementById('end').classList.remove('hide')}
 const SILENT='data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';let POOL=[];
 function unlockPool(){POOL=[];for(let i=0;i<12;i++){const el=new Audio();el.crossOrigin='anonymous';el.src=SILENT;try{const p=el.play();if(p&&p.then)p.then(()=>el.pause()).catch(()=>{})}catch(e){}POOL.push(el)}}
+let WL=null;function keepAwake(){try{if(window.self===window.top&&navigator.wakeLock&&!WL)navigator.wakeLock.request('screen').then(l=>{WL=l;l.addEventListener('release',()=>{WL=null})}).catch(()=>{})}catch(e){}}
 async function begin(){
   clearTimeout(exitT);
   try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
@@ -514,7 +530,7 @@ async function begin(){
   if(PHONE&&portrait()&&!EMBED){checkRotate();return}
   let rs=null;try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();rs=actx.resume()}catch(e){}
   {const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;
-   if(!fn&&window.self!==window.top){try{window.top.location.href=location.href.split('#')[0]}catch(e){window.open(location.href.split('#')[0],'_top')}return}
+   if(!fn&&window.self!==window.top){const u=location.href.split('#')[0].split('?')[0]+(FROM?'?from='+FROM:'');try{window.top.location.href=u}catch(e){window.open(u,'_top')}return}
    if(fn&&!document.fullscreenElement&&!document.webkitFullscreenElement){try{const r=fn.call(el);if(r&&r.then)r.then(()=>PHONE&&screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}catch(e){}}}
   try{await rs}catch(e){}
   await decodeAll();P=plan();P.first=FIRST;try{localStorage.setItem('nr_seen','1')}catch(e){}FIRST=false;window.__plan=P;
@@ -522,7 +538,8 @@ async function begin(){
   t0=actx.currentTime+1.2-S;seekOff=0;clk.base=null;scheduleAudio();unlockMedia();
   document.getElementById('start').classList.add('hide');document.getElementById('end').classList.add('hide');document.body.classList.add('playing');
   if(DEAL){let d=document.getElementById('deal');if(!d){d=document.createElement('div');d.id='deal';d.style.cssText='position:fixed;left:12px;bottom:10px;z-index:40;font:12px/1.4 Georgia,serif;color:#e8e4d8;opacity:.75;max-width:70vw;pointer-events:none';document.body.appendChild(d)}d.textContent='version '+fmtV(seed)+' · '+P.audio.deal}
-  playing=true;requestAnimationFrame(frame)}
+  playing=true;requestAnimationFrame(frame);keepAwake();
+  setTimeout(()=>{if(playing&&actx&&actx.state!=='running'){actx.resume().catch(()=>{});document.getElementById('sndhint').classList.add('show')}},2500)}
 if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
 function prepare(){seed=FORCE_V?(+FORCE_V>>>0)||7:newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
@@ -562,14 +579,14 @@ document.getElementById('fs').addEventListener('click',()=>{const el=document.do
 if(/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1))document.body.classList.add('ipad');
 const X=document.getElementById('x');const inFS=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
 const EXPAND='<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 6V1h5M12 1h5v5M17 12v5h-5M6 17H1v-5"/></svg>';
-X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
-const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);document.body.classList.toggle('boxed',!PHONE&&!f);X.innerHTML=f?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':'Full screen')};onFS();
+X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}if(!CANFS){finish();if(window.self===window.top)location.href=BACK;return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
+const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);document.body.classList.toggle('boxed',!PHONE);const xx=f||!CANFS;X.innerHTML=xx?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':!CANFS?'Back':'Full screen')};onFS();
 document.addEventListener('fullscreenchange',onFS);document.addEventListener('webkitfullscreenchange',onFS);
 let awT=0;const wake=()=>{document.body.classList.add('awake');clearTimeout(awT);awT=setTimeout(()=>document.body.classList.remove('awake'),3000)};
 addEventListener('mousemove',wake);addEventListener('touchstart',wake,{passive:true});
 ctx.fillStyle='#050705';ctx.fillRect(0,0,W,H);
 })();
 </script>
-<script>(function(){try{if(window.self!==window.top)return;var a=document.getElementById('home');var r=document.referrer||'';var m=r.match(/^https?:\/\/(www\.)?(jasonlindsey\.(art|com))(\/[^?#]*)?/i);if(m){var d=m[2].toLowerCase();a.href=(m[4]&&m[4].length>1)?r:(d==='jasonlindsey.com'?'https://jasonlindsey.com/Short-Films/Nobody-Remembers/1':'https://www.jasonlindsey.art/nobody-remembers');a.textContent='back to '+d}a.style.display='inline-block'}catch(e){}})();</script>
+<script>(function(){try{if(window.self!==window.top)return;var a=document.getElementById('home');var F='';try{F=new URLSearchParams(location.search).get('from')||''}catch(e){}if(F==='com'||F==='art'){a.href=F==='com'?'https://jasonlindsey.com/Short-Films/Nobody-Remembers/1':'https://www.jasonlindsey.art/nobody-remembers';a.textContent='back to jasonlindsey.'+F;a.style.display='inline-block';return}var r=document.referrer||'';var m=r.match(/^https?:\/\/(www\.)?(jasonlindsey\.(art|com))(\/[^?#]*)?/i);if(m){var d=m[2].toLowerCase();a.href=(m[4]&&m[4].length>1)?r:(d==='jasonlindsey.com'?'https://jasonlindsey.com/Short-Films/Nobody-Remembers/1':'https://www.jasonlindsey.art/nobody-remembers');a.textContent='back to '+d}a.style.display='inline-block'}catch(e){}})();</script>
 </body>
 </html>
