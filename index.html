@@ -146,6 +146,7 @@ const PHONE=/phone/.test(location.hash)||PHONE0;document.body.classList.add('fil
 if(!document.documentElement.requestFullscreen&&!document.documentElement.webkitRequestFullscreen)document.body.classList.add('nofs');
 let tapT=0;addEventListener('touchstart',e=>{if(!PHONE||e.target.closest('button'))return;document.body.classList.add('tapped');clearTimeout(tapT);tapT=setTimeout(()=>document.body.classList.remove('tapped'),3000)},{passive:true});
 let FIRST=false;try{FIRST=!localStorage.getItem('nr_seen')}catch(e){}
+const FORCE_V=(location.hash.match(/v=(\d+)/)||[])[1],DEAL=/deal/.test(location.hash);if(FORCE_V)FIRST=false;
 const FILM_ORDER=['bedroom','fjord','barn','forest','skywater','cloud','lake'];
 const FILM_PLACE={bedroom:['R','low'],fjord:['C','low'],barn:['R','low'],forest:['R','low'],skywater:['L','low'],cloud:['L','low'],lake:['L','mid']};
 const FILM_LEN={bedroom:46,fjord:55,barn:60,forest:60,skywater:57,cloud:57.5,lake:53.5};
@@ -340,12 +341,27 @@ function plan(){
   const nw=ri(3,6);for(let i=0;i<nw;i++){const str=pick(FLASH_WORDS);p.words.push({str,at:rr(28,p.end.start-12),d:rr(2.2,3.6),x:rr(0.3,0.7)*W,y:rr(0.3,0.62)*H,key:'w'+i,rnd:mulberry32(seed^(i*104729+77))})}
   // audio plan
   const a=p.audio,sc=p.total/390,J=()=>rr(-2,2),tot=p.total;
+  // music: a first-time viewer hears the original arrangement; every later version
+  // (1) starts each piece from a different place and (2) deals out which piece leads each part
+  const vary=!FIRST&&!SAMPLE,DUR={unknown_eq:164.9,unknown_soft:164.9,candle:120},deal=[];
+  const offIn=(src,len)=>rr(0,Math.max(0,DUR[src]-len-0.5)),lead=()=>chance(0.5)?'unknown_eq':'unknown_soft';
+  const fmt=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0'),nm=x=>x==='unknown_eq'?'unknown (clear)':x==='unknown_soft'?'unknown (soft)':'candle';
   a.unk=[{src:'unknown_soft',at:0.5,off:48.46,len:14,g:1,fi:1.5,fo:4}];
   const bAt=Math.min(152*sc+J(),156),sAt=288*sc+J();
-  a.unk.push({src:'unknown_eq',at:0,off:0,len:Math.min(164.8,bAt+8),g:0.75,fi:3,fo:6});
-  const need=sAt-bAt+6;a.unk.push({src:'unknown_eq',at:bAt,off:Math.max(0,Math.min(19.96,164.8-need)),len:need,g:1,fi:5,fo:6});
-  a.unk.push({src:'unknown_soft',at:sAt,off:0,len:tot-sAt,g:1,fi:5,fo:9});
+  const candleLed=vary&&chance(0.4)?(chance(0.5)?'B':'C'):null;
+  {const len=Math.min(164.8,bAt+8),src=vary?lead():'unknown_eq',off=vary?offIn(src,len):0;
+   a.unk.push({src,at:0,off,len,g:0.75,fi:3,fo:6});deal.push('A '+nm(src)+' from '+fmt(off))}
+  {const need=sAt-bAt+6;if(candleLed==='B')deal.push('B candle leads');else{const src=vary?lead():'unknown_eq',off=vary?offIn(src,need):Math.max(0,Math.min(19.96,164.8-need));
+   a.unk.push({src,at:bAt,off,len:need,g:1,fi:5,fo:6});deal.push('B '+nm(src)+' from '+fmt(off))}}
+  {const len=tot-sAt;if(candleLed==='C')deal.push('C candle leads');else{const src=vary?lead():'unknown_soft',off=vary?offIn(src,len):0;
+   a.unk.push({src,at:sAt,off,len,g:1,fi:5,fo:9});deal.push('C '+nm(src)+' from '+fmt(off))}}
   a.candle=[{src:'candle',at:14+J(),off:0,len:124.5,g:0.75,fi:5,fo:6},{src:'candle',at:126*sc+J(),off:0,len:116,g:1,fi:6,fo:6},{src:'candle',at:238*sc+J(),off:0,len:Math.min(116,tot-238*sc-20),g:1,fi:6,fo:7}];
+  if(vary){a.candle.forEach(c=>{c.off=rr(0,25);c.len=Math.min(c.len,DUR.candle-c.off-0.3)});
+    // when candle leads the last part, the last candle runs right to the end and fades with the film
+    if(candleLed==='C'){const c=a.candle[2];c.off=0;c.at=Math.max(c.at,tot-(DUR.candle-0.3));c.len=tot-c.at;c.fo=9}
+    // keep each candle passage overlapping the next by 5s, so there is never a hole
+    for(let i=0;i<a.candle.length-1;i++){const c=a.candle[i],need=a.candle[i+1].at+5-c.at;if(c.len<need){c.off=Math.max(0,Math.min(c.off,DUR.candle-need-0.3));c.len=Math.max(c.len,Math.min(need,DUR.candle-c.off-0.3))}}}
+  deal.push('candle from '+a.candle.map(c=>fmt(c.off)).join(' / '));a.deal=(vary?'':'original arrangement · ')+deal.join(' · ');
   const v1=chance(0.5)?'voice_spectral':'voice_beholding',v2=v1==='voice_spectral'?'voice_beholding':'voice_spectral';
   const vo=n=>n==='voice_spectral'?rr(52,62):rr(92,100);
   a.voices=[{src:v1,at:tot-38+J(),off:vo(v1),len:32,g:1,fi:5,fo:6},{src:v2,at:tot-34+J(),off:vo(v2),len:30,g:1,fi:5,fo:6}];
@@ -502,9 +518,10 @@ async function begin(){
   let S=0;if(SAMPLE&&SAMPLE_SCENE==='end'){S=P.end.start-8}else if(SAMPLE){const f=P.scenes.find(x=>x.name===SAMPLE_SCENE)||P.scenes[0];S=f.start-4;P.stopAt=f.start+f.len+2}
   t0=actx.currentTime+1.2-S;seekOff=0;clk.base=null;scheduleAudio();unlockMedia();
   document.getElementById('start').classList.add('hide');document.getElementById('end').classList.add('hide');document.body.classList.add('playing');
+  if(DEAL){let d=document.getElementById('deal');if(!d){d=document.createElement('div');d.id='deal';d.style.cssText='position:fixed;left:12px;bottom:10px;z-index:40;font:12px/1.4 Georgia,serif;color:#e8e4d8;opacity:.75;max-width:70vw;pointer-events:none';document.body.appendChild(d)}d.textContent='version '+fmtV(seed)+' · '+P.audio.deal}
   playing=true;requestAnimationFrame(frame)}
 if(TEST)window.__seek=s=>{seekOff=s-(actx.currentTime-t0)};
-function prepare(){seed=newSeed();document.getElementById('vnum').textContent=fmtV(seed);
+function prepare(){seed=FORCE_V?(+FORCE_V>>>0)||7:newSeed();document.getElementById('vnum').textContent=fmtV(seed);
   if(SAMPLE){document.querySelector('#start .lede').textContent='Sample: the forest scene only (about a minute), with the music now following the film\u2019s own arrangement, a lower drum, and the new scene timing.';document.querySelector('#start .hint').textContent='sound on \u00b7 press T for music and drum sliders'}}
 prepare();
 // ---- start screen: a continuous blend of five abstract photos, never one alone; same push and grain as the film ----
