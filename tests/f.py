@@ -69,6 +69,21 @@ async def main():
         t1=await fr.evaluate("window.__d.t()");await pg.wait_for_timeout(4000);t2=await fr.evaluate("window.__d.t()")
         rec(n,'film plays through silently instead of freezing','playing' in r[0]['cls'] and 3.3<t2-t1<4.7,(t1,t2));rec(n,'no errors',not errs,errs)
     await case(p,'computer with no working sound at all',"const R=AudioContext.prototype.resume;AudioContext.prototype.resume=function(){try{this.suspend()}catch(e){}return new Promise(()=>{})}",[4],c5b)
+    async def cP(n,r,pg,fr,errs):
+        await fr.evaluate("window.__testPause=1");await fr.evaluate("(()=>{for(const c of window.__d.media())if(c.started&&!c.done)c.el.pause()})()")
+        await pg.wait_for_timeout(1)
+    async def c11(n,r,pg,fr,errs):
+        await fr.evaluate("document.getElementById('x');");await pg.wait_for_timeout(200)
+        await fr.evaluate("(()=>{const d=window.__d;window.__pr=1})()")
+        rec(n,'pieces on backup before pause',all('BACKUP(' in m for m in r[-1]['media']),r[-1]['media'])
+        await pg.evaluate("window.dispatchEvent(new Event('noop'))")
+        await fr.evaluate("Object.defineProperty(window,'innerHeight',{get:()=>2000,configurable:true});window.dispatchEvent(new Event('resize'))")
+        await pg.wait_for_timeout(1500);p1=await fr.evaluate("window.__d.st().ctx")
+        await fr.evaluate("Object.defineProperty(window,'innerHeight',{get:()=>400,configurable:true});window.dispatchEvent(new Event('resize'))")
+        await pg.wait_for_timeout(3000);s=await st(fr)
+        dbl=await fr.evaluate("window.__d.media().filter(c=>c.started&&!c.done&&c.fb&&!c.el.paused).length")
+        rec(n,'after pause/resume, backup music plays once (no doubled music)',dbl==0 and s['lv']['music']>0.0005,(p1,dbl,s['lv'],s['media']))
+    await case(p,'pause and resume while music is on backup (phone)',"Object.defineProperty(navigator,'userAgent',{get:()=>'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'});Element.prototype.requestFullscreen=undefined;Element.prototype.webkitRequestFullscreen=undefined;const P=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){if((this.src||'').includes('.mp3')&&!window.__allowEl)return Promise.reject(new DOMException('blocked','NotAllowedError'));return P.call(this)}",[9],c11,host=FILM+'#diag')
     async def c6(n,r,pg,fr,errs):
         rec(n,'film plays inside the box instead','playing' in r[0]['cls'] and not await pg.evaluate("!!document.fullscreenElement"),r[0]['cls']);rec(n,'music fine',music(r[0]),r[0]['lv']);rec(n,'no errors',not errs and not any('ERR' in l or 'REJ' in l for l in r[0]['log']),(errs,r[0]['log'][-4:]))
     await case(p,'site does not allow full screen',None,[8],c6,host='t_nofs.html')

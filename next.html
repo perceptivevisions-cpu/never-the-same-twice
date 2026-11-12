@@ -72,11 +72,13 @@
   #sndhint{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:31;font:13px/1 Georgia,serif;letter-spacing:.12em;color:#e8e4d8;background:rgba(5,7,5,.55);border:1px solid rgba(232,228,216,.35);padding:9px 14px;display:none}#sndhint.show{display:block}
   body.fill.boxed #c{width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;object-fit:fill}
   body.fill.playing.awake:not(.tapped) #stop{opacity:.55;pointer-events:auto;right:18px}
+  #ask{position:fixed;inset:0;z-index:32;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.1em;background:rgba(5,7,5,.82);text-align:center}#ask.show{display:flex}
+  #ask p{font-size:clamp(26px,6vh,44px);margin:0;color:#e8e4d8}#askBack{color:inherit;text-decoration:none;border-bottom:1px solid rgba(232,228,216,.35);padding-bottom:2px;opacity:.6;margin-top:.6em}
   #x svg{width:18px;height:18px;display:block;margin:12px auto}
 </style>
 </head>
 <body>
-<button id="x" aria-label="Exit full screen">&times;</button><div id="sndhint">tap for sound</div>
+<button id="x" aria-label="Exit full screen">&times;</button><div id="ask"><p class="jt">paused.</p><button class="main" id="askKeep">keep watching</button><a class="hint" id="askBack" href="#">back to jasonlindsey.art</a></div><div id="sndhint">tap for sound</div>
 <div id="stage"><canvas id="c" width="1920" height="1080"></canvas></div>
 
 <div class="screen" id="start">
@@ -113,7 +115,7 @@
 const W=1920,H=1080,INK=[232,228,216];
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const TEST=/test/.test(location.hash);
-const BUILD='r6 · 12 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
+const BUILD='r7 · 12 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
 window.addEventListener('error',e=>log('ERR '+(e.message||'')+' @'+(e.lineno||'')));window.addEventListener('unhandledrejection',e=>log('REJ '+((e.reason&&(e.reason.name||e.reason.message))||e.reason)));
 
 // ---------------- tunable look (sliders: add #tune to the address) ----------------
@@ -409,7 +411,7 @@ function mediaTick(t){for(const c of media){if(c.started)continue;if(t>=c.at-0.1
   try{el.currentTime=c.off+late}catch(e){}const rem=c.len-late;
   // fade in only once the sound is actually coming out (it may still be buffering)
   c.gn.gain.cancelScheduledValues(0);c.gn.gain.setValueAtTime(0.0001,actx.currentTime);
-  const go=()=>{if(c.go||c.done)return;c.go=true;const now=actx.currentTime,cur=now-t0+seekOff,left=c.at+c.len-cur;if(left<1)return;
+  const go=()=>{if(c.go||c.done||c.fb)return;c.go=true;const now=actx.currentTime,cur=now-t0+seekOff,left=c.at+c.len-cur;if(left<1)return;
     try{const want=c.off+Math.max(0,cur-c.at);if(Math.abs(el.currentTime-want)>0.35){el.currentTime=want;log('lined up '+c.src)}}catch(e){}
     envGain(c.gn,now,c.g,Math.max(c.fi,late>0?1.5:c.fi),c.fo,Math.min(now+left,t0+endT()))};
   if(c.locked||c.nosrc){fallback(c,c.nosrc?'no source':'blocked at start');c.endAt=c.at+c.len+0.5;continue}
@@ -546,13 +548,17 @@ function diag(on){diagOn=on;let d=document.getElementById('diag');if(!on){if(d)d
   up();clearInterval(diagIv);diagIv=setInterval(up,700)}
 {let n=0,tm=0;const v=document.querySelector('#start .ver');v&&v.addEventListener('click',()=>{n++;clearTimeout(tm);tm=setTimeout(()=>{n=0},3000);if(n>=5){n=0;diag(!diagOn)}})}
 function checkRotate(){const need=PHONE&&portrait()&&(!EMBED||!!(document.fullscreenElement||document.webkitFullscreenElement));document.getElementById('rotate').classList.toggle('show',need);
-  if(!playing)return;if(need&&!paused){paused=true;try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
-  else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
+  if(!playing)return;if(need)pauseFilm();else if(!asking)resumeFilm()}
+let asking=false;
+function pauseFilm(){if(paused||!playing)return;paused=true;log('paused');try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done&&!c.fb){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
+function resumeFilm(){if(!paused||!playing)return;paused=false;log('resumed');try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done&&!c.fb){c.wasPlaying=false;try{const pp=c.el.play();pp&&pp.catch&&pp.catch(()=>{})}catch(e){}}}
+function askLeave(){asking=true;pauseFilm();document.getElementById('ask').classList.add('show')}
+function closeAsk(){asking=false;document.getElementById('ask').classList.remove('show')}
 addEventListener('resize',checkRotate);
 addEventListener('pointerdown',()=>{if(actx&&actx.state!=='running'&&actx.state!=='closed'&&!paused)actx.resume().then(()=>document.getElementById('sndhint').classList.remove('show')).catch(()=>{})});addEventListener('orientationchange',()=>setTimeout(checkRotate,250));
 function exitFS(){try{const r=document.fullscreenElement?document.exitFullscreen():document.webkitFullscreenElement?document.webkitExitFullscreen():null;if(r&&r.catch)r.catch(()=>{})}catch(e){}}
 let exitT=0;
-function finish(){if(!playing)return;playing=false;try{WL&&WL.release()}catch(e){}WL=null;document.getElementById('sndhint').classList.remove('show');releasePlayers(media.slice());clearTimeout(exitT);exitT=setTimeout(exitFS,6000);document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
+function finish(){if(!playing)return;playing=false;closeAsk();paused=false;try{WL&&WL.release()}catch(e){}WL=null;document.getElementById('sndhint').classList.remove('show');releasePlayers(media.slice());clearTimeout(exitT);exitT=setTimeout(exitFS,6000);document.body.classList.remove('playing');for(const c of media){try{c.el.pause()}catch(e){}}
   try{master&&master.disconnect()}catch(e){}
   document.getElementById('vnum2').textContent=fmtV(seed);document.getElementById('end').classList.remove('hide')}
 const SILENT='data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';let POOL=[];
@@ -629,7 +635,10 @@ function fitFS(){const b=document.body,st=b.style;let k=1;try{if(b.classList.con
   else if(st.transform){st.position=st.left=st.top=st.width=st.height=st.transformOrigin=st.transform=''}}
 addEventListener('resize',()=>{fitFS();setTimeout(fitFS,400)});addEventListener('orientationchange',()=>{setTimeout(fitFS,300);setTimeout(fitFS,1000)});
 const EXPAND='<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 6V1h5M12 1h5v5M17 12v5h-5M6 17H1v-5"/></svg>';
-X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}if(!CANFS){finish();if(window.self===window.top)location.href=BACK;return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
+X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}if(!CANFS){if(playing){if(!asking)askLeave()}else if(window.self===window.top)location.href=BACK;return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
+document.getElementById('askBack').textContent='back to '+(FROM==='com'?'jasonlindsey.com':'jasonlindsey.art');
+document.getElementById('askKeep').addEventListener('click',e=>{e.stopPropagation();closeAsk();checkRotate();if(!document.getElementById('rotate').classList.contains('show'))resumeFilm()});
+document.getElementById('askBack').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();finish();if(window.self===window.top)location.href=BACK});
 const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);document.body.classList.toggle('boxed',!PHONE&&!f);fitFS();const xx=f||!CANFS;X.innerHTML=xx?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':!CANFS?'Back':'Full screen')};onFS();
 document.addEventListener('fullscreenchange',()=>{onFS();setTimeout(fitFS,300);setTimeout(fitFS,1000)});document.addEventListener('webkitfullscreenchange',()=>{onFS();setTimeout(fitFS,300);setTimeout(fitFS,1000)});
 let awT=0;const wake=()=>{document.body.classList.add('awake');clearTimeout(awT);awT=setTimeout(()=>document.body.classList.remove('awake'),3000)};
