@@ -494,7 +494,8 @@ function frame(){if(!playing)return;const at=actx.currentTime-t0+seekOff,pt=perf
   requestAnimationFrame(frame)}
 let seekOff=0,paused=false;
 const portrait=()=>innerHeight>innerWidth;
-function checkRotate(){const need=PHONE&&portrait();document.getElementById('rotate').classList.toggle('show',need);
+const EMBED=window.self!==window.top;
+function checkRotate(){const need=PHONE&&portrait()&&(!EMBED||!!(document.fullscreenElement||document.webkitFullscreenElement));document.getElementById('rotate').classList.toggle('show',need);
   if(!playing)return;if(need&&!paused){paused=true;try{actx.suspend()}catch(e){}for(const c of media)if(c.started&&!c.done){c.wasPlaying=true;try{c.el.pause()}catch(e){}}}
   else if(!need&&paused){paused=false;try{actx.resume()}catch(e){}for(const c of media)if(c.wasPlaying&&!c.done){c.wasPlaying=false;c.el.play().catch(()=>{})}}}
 addEventListener('resize',checkRotate);
@@ -510,7 +511,7 @@ async function begin(){
   clearTimeout(exitT);
   try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
   unlockPool();
-  if(PHONE&&portrait()){checkRotate();return}
+  if(PHONE&&portrait()&&!EMBED){checkRotate();return}
   let rs=null;try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();rs=actx.resume()}catch(e){}
   {const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;
    if(!fn&&window.self!==window.top){try{window.top.location.href=location.href.split('#')[0]}catch(e){window.open(location.href.split('#')[0],'_top')}return}
