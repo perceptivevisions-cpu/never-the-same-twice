@@ -68,6 +68,7 @@
     font:300 26px/42px Georgia,serif;text-align:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .5s;padding:0}
   body.isfs.awake #x,body:not(.nofs).playing.awake #x{opacity:.75;pointer-events:auto}
   body.ipad.isfs #x{display:none}
+  body.fill.boxed #c{width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;object-fit:fill}
   body.fill.playing.awake:not(.tapped) #stop{opacity:.55;pointer-events:auto;right:18px}
   #x svg{width:18px;height:18px;display:block;margin:12px auto}
 </style>
@@ -409,9 +410,10 @@ function pulseVal(arr,lt){let v=0;for(const q of arr){const[b,up,hold,pk,dn]=q.l
   if(lt>=b&&lt<=b+up+hold+dn)v=Math.max(v,lt<b+up?pk*smooth((lt-b)/up):lt<b+up+hold?pk:pk*(1-smooth((lt-b-up-hold)/dn)))}return v}
 function fitW(){const r=cv.getBoundingClientRect();return Math.min(r.width,r.height*16/9)||1920}
 function visX(){const r=cv.getBoundingClientRect();if(!r.width)return[0,1920];const sc=Math.max(r.width/1920,r.height/1080),vw=Math.min(1920,r.width/sc);return[(1920-vw)/2,(1920+vw)/2]}
-function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return document.body.classList.contains('fill')?540+r.height/sc/2:1080}
+const isFill=()=>document.body.classList.contains('fill')&&!document.body.classList.contains('boxed');
+function visBottom(){const r=cv.getBoundingClientRect();const sc=Math.max(r.width/1920,r.height/1080);return isFill()?540+r.height/sc/2:1080}
 function effSize(base,minCss){const cw=fitW();return Math.max(base,Math.round(minCss*1920/cw))}
-function dispScale(){const r=cv.getBoundingClientRect();return document.body.classList.contains('fill')?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
+function dispScale(){const r=cv.getBoundingClientRect();return isFill()?Math.max(r.width/1920,r.height/1080):(fitW()/1920)}
 const lumC=document.createElement('canvas');lumC.width=192;lumC.height=108;const lumX=lumC.getContext('2d',{willReadFrequently:true});
 function regionLum(img,tb){if(!img)return 0;try{lumX.clearRect(0,0,192,108);lumX.drawImage(img,0,0,192,108);
   const x=clamp(Math.floor((tb.x0-40)/10),0,191),y=clamp(Math.floor((tb.y0-tb.size*1.2)/10),0,107),w=clamp(Math.ceil((tb.plan.w+80)/10),1,192-x),h=clamp(Math.ceil(((tb.plan.n-1)*tb.plan.lh+tb.size*2.2)/10),1,108-y);
@@ -558,7 +560,7 @@ if(/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&nav
 const X=document.getElementById('x');const inFS=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
 const EXPAND='<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 6V1h5M12 1h5v5M17 12v5h-5M6 17H1v-5"/></svg>';
 X.addEventListener('click',e=>{e.stopPropagation();if(inFS()){exitFS();return}const el=document.documentElement,fn=el.requestFullscreen||el.webkitRequestFullscreen;try{const r=fn&&fn.call(el);if(r&&r.catch)r.catch(()=>{})}catch(err){}});
-const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);X.innerHTML=f?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':'Full screen')};onFS();
+const onFS=()=>{const f=inFS();document.body.classList.toggle('isfs',f);document.body.classList.toggle('boxed',!PHONE&&!f);X.innerHTML=f?'&times;':EXPAND;X.setAttribute('aria-label',f?'Exit full screen':'Full screen')};onFS();
 document.addEventListener('fullscreenchange',onFS);document.addEventListener('webkitfullscreenchange',onFS);
 let awT=0;const wake=()=>{document.body.classList.add('awake');clearTimeout(awT);awT=setTimeout(()=>document.body.classList.remove('awake'),3000)};
 addEventListener('mousemove',wake);addEventListener('touchstart',wake,{passive:true});
