@@ -115,20 +115,20 @@
 const W=1920,H=1080,INK=[232,228,216];
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const TEST=/test/.test(location.hash);
-const BUILD='r7 · 12 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
+const BUILD='r8 · 13 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
 window.addEventListener('error',e=>log('ERR '+(e.message||'')+' @'+(e.lineno||'')));window.addEventListener('unhandledrejection',e=>log('REJ '+((e.reason&&(e.reason.name||e.reason.message))||e.reason)));
 
 // ---------------- tunable look (sliders: add #tune to the address) ----------------
-const TDEF={readTime:1,music:0.5,musicLow:-6,grain:0.22,inkTexture:0.45,edgeRough:0.4,glow:0.45,textSize:18,textEnd:37,darken:0.6,pushIn:1.0,flicker:1.0,vignette:0.9};
+const TDEF={readTime:1,music:0.5,musicLow:-6,grain:0.22,inkTexture:0.45,edgeRough:0.4,glow:0.45,textSize:18,textEnd:49,darken:0.6,solid:1,pushIn:1.0,flicker:1.0,vignette:0.9};
 const TSPEC=[['grain','Grain',0,0.5,0.01],['inkTexture','Ink texture',0,1,0.01],['edgeRough','Edge roughness',0,1,0.01],['glow','Glow',0,1,0.01],
-  ['textSize','Text start size',10,32,1],['textEnd','Text zoomed size',22,60,1],['darken','Darken behind text',0,1,0.01],['pushIn','Push-in on text',0,2,0.05],['flicker','Flicker',0,2,0.05],['vignette','Vignette',0,1,0.01],['readTime','Reading time (next version)',0.5,2,0.05],['music','Music level',0,1,0.01],['musicLow','Music low end / drum (dB)',-18,6,1]];
+  ['textSize','Text start size',10,32,1],['textEnd','Text zoomed size',22,60,1],['darken','Darken behind text',0,1,0.01],['solid','Text solid when zoomed',0,1,0.01],['pushIn','Push-in on text',0,2,0.05],['flicker','Flicker',0,2,0.05],['vignette','Vignette',0,1,0.01],['readTime','Reading time (next version)',0.5,2,0.05],['music','Music level',0,1,0.01],['musicLow','Music low end / drum (dB)',-18,6,1]];
 let TUNE=Object.assign({},TDEF);
-try{const s=JSON.parse(localStorage.getItem('nr_tune2')||'null');if(s)Object.assign(TUNE,s)}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('nr_tune3')||'null');if(s)Object.assign(TUNE,s)}catch(e){}
 function buildTune(){const box=document.getElementById('tuneRows');box.innerHTML='';
   TSPEC.forEach(([k,lab,mn,mx,st])=>{const l=document.createElement('label');l.innerHTML=`<span>${lab}</span><input type="range" min="${mn}" max="${mx}" step="${st}" value="${TUNE[k]}"><b>${(+TUNE[k]).toFixed(st<1?2:0)}</b>`;
     const i=l.querySelector('input'),b=l.querySelector('b');i.oninput=()=>{TUNE[k]=+i.value;b.textContent=(+i.value).toFixed(st<1?2:0);
-      try{localStorage.setItem('nr_tune2',JSON.stringify(TUNE))}catch(e){}if(k==='inkTexture')makeInkPattern();if(k==='textSize')clearTextCache();if(/glow|inkTexture|edgeRough/.test(k))spriteCache.clear();applyMix()};box.appendChild(l)})}
-document.getElementById('tReset').onclick=()=>{TUNE=Object.assign({},TDEF);try{localStorage.removeItem('nr_tune2')}catch(e){}buildTune();makeInkPattern();clearTextCache()};
+      try{localStorage.setItem('nr_tune3',JSON.stringify(TUNE))}catch(e){}if(k==='inkTexture')makeInkPattern();if(k==='textSize')clearTextCache();if(/glow|inkTexture|edgeRough/.test(k))spriteCache.clear();applyMix()};box.appendChild(l)})}
+document.getElementById('tReset').onclick=()=>{TUNE=Object.assign({},TDEF);try{localStorage.removeItem('nr_tune3')}catch(e){}buildTune();makeInkPattern();clearTextCache()};
 document.getElementById('tCopy').onclick=()=>{const t=JSON.stringify(TUNE);try{navigator.clipboard.writeText(t).catch(()=>{})}catch(e){}document.getElementById('tCopy').textContent='Copied'};
 function checkTune(){document.getElementById('tune').classList.toggle('show',/tune/.test(location.hash))}
 window.addEventListener('hashchange',checkTune);
@@ -272,7 +272,7 @@ function drawText(plan,x,y,size,o){
     if(o.fadeIn){const[s,l]=o.fadeIn;const st=s+u*l*0.7+dIn;a*=smooth((o.t-st)/(l*0.35+0.25))}
     if(o.fadeOut){const[s,l]=o.fadeOut;const st=s+v*l*0.7+dOut;a*=1-smooth((o.t-st)/(l*0.35+0.25))}
     a*=fk;
-    a*=(o.byLetter?gl.ink:wp.ink*gl.ink)*(o.alpha??1);if(a<=0.004)continue;
+    {const ik=(o.byLetter?gl.ink:wp.ink*gl.ink),sk=(o.solid||0)*TUNE.solid;a*=(ik+(1-ik)*sk)*(o.alpha??1)}if(a<=0.004)continue;
     const fl=o.float||0;const fx=fl*Math.sin(o.t*6.283/wp.f1+wp.p1),fy=fl*0.7*Math.sin(o.t*6.283/wp.f2+wp.p2);
     const sp=glyphSprite(gl.ch,size,gl.i%3,gl.ex);
     ctx.save();ctx.translate(x+gl.x+fx,y+gl.y+gl.dy+fy);ctx.rotate(gl.rot);ctx.scale(gl.sc,gl.sc);
@@ -451,6 +451,33 @@ const lumC=document.createElement('canvas');lumC.width=192;lumC.height=108;const
 function regionLum(img,tb){if(!img)return 0;try{lumX.clearRect(0,0,192,108);lumX.drawImage(img,0,0,192,108);
   const x=clamp(Math.floor((tb.x0-40)/10),0,191),y=clamp(Math.floor((tb.y0-tb.size*1.2)/10),0,107),w=clamp(Math.ceil((tb.plan.w+80)/10),1,192-x),h=clamp(Math.ceil(((tb.plan.n-1)*tb.plan.lh+tb.size*2.2)/10),1,108-y);
   const d=lumX.getImageData(x,y,w,h).data;let sum=0;for(let i=0;i<d.length;i+=4)sum+=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]);return sum/(d.length/4)/255}catch(e){return 0}}
+// burn-in behind text, like burning in a print: soft irregular blobs per word, only as dark as the light under that word needs
+const BMW=240,BMH=135;
+function lumP90(x,y,w,h){const x0=clamp(Math.floor(x/10),0,191),y0=clamp(Math.floor(y/10),0,107),ww=clamp(Math.ceil(w/10),1,192-x0),hh=clamp(Math.ceil(h/10),1,108-y0);
+  const d=lumX.getImageData(x0,y0,ww,hh).data,a=[];for(let i=0;i<d.length;i+=4)a.push((0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255);a.sort((p,q)=>p-q);return a[Math.floor(a.length*0.9)]||0}
+function burnMask(img,tb,key){if(!img)return null;try{lumX.clearRect(0,0,192,108);lumX.drawImage(img,0,0,192,108);
+  const c=document.createElement('canvas');c.width=BMW;c.height=BMH;const g=c.getContext('2d');const sx=BMW/W;g.scale(sx,sx);
+  let h=7;for(const ch of String(key))h=(h*31+ch.charCodeAt(0))>>>0;const r=mulberry32(h);
+  const words={};for(const gl of tb.plan.g){const w=words[gl.word]||(words[gl.word]={x0:1e9,x1:-1e9,y:0,n:0});w.x0=Math.min(w.x0,gl.x);w.x1=Math.max(w.x1,gl.x+tb.size*0.5);w.y+=gl.y;w.n++}
+  const sz=tb.size;
+  const WL=Object.keys(words).map(k=>{const w=words[k],cx=tb.x0+(w.x0+w.x1)/2,cy=tb.y0+w.y/w.n-sz*0.35,ww=w.x1-w.x0;
+    return{cx,cy,ww,dk:clamp((lumP90(cx-ww/2-sz,cy-sz*1.2,ww+sz*2,sz*2.4)-0.16)/0.4)}});
+  const sm=WL.map((w,i)=>Math.max(w.dk,0.7*((WL[i-1]||{}).dk||0),0.7*((WL[i+1]||{}).dk||0),0.4*((WL[i-2]||{}).dk||0),0.4*((WL[i+2]||{}).dk||0)));
+  for(let i=0;i<WL.length;i++){const{cx,cy,ww}=WL[i],dk=sm[i];if(dk<0.02)continue;
+    const nb=2+Math.ceil(ww/(sz*3));for(let b=0;b<nb;b++){const bx=cx+(b/(nb-1||1)-0.5)*ww*0.9+(r()-0.5)*sz*0.8,by=cy+(r()-0.5)*sz*0.6;
+      const rx=sz*(4.5+r()*2.5),ry=rx*(0.42+r()*0.18),a=0.42*dk*(0.85+r()*0.25);
+      g.save();g.translate(bx,by);g.rotate((r()-0.5)*0.3);g.scale(1,ry/rx);const gr=g.createRadialGradient(0,0,0,0,0,rx);
+      [[0,1],[0.25,0.86],[0.45,0.6],[0.62,0.36],[0.78,0.16],[0.9,0.05],[1,0]].forEach(([o,v])=>gr.addColorStop(o,'rgba(4,6,4,'+(a*v).toFixed(3)+')'));
+      g.fillStyle=gr;g.fillRect(-rx,-rx,2*rx,2*rx);g.restore()}
+    {const hx=cx+(r()-0.5)*sz,rx=sz*(10+r()*4)+ww*0.4,ry=rx*(0.38+r()*0.12),a=0.24*dk;g.save();g.translate(hx,cy);g.scale(1,ry/rx);const gr=g.createRadialGradient(0,0,0,0,0,rx);
+      [[0,1],[0.3,0.8],[0.55,0.45],[0.75,0.18],[0.9,0.05],[1,0]].forEach(([o,v])=>gr.addColorStop(o,'rgba(4,6,4,'+(a*v).toFixed(3)+')'));g.fillStyle=gr;g.fillRect(-rx,-rx,2*rx,2*rx);g.restore()}}
+  // soften: three box-blur passes on the small mask so no edge can be seen
+  const id=g.getImageData(0,0,BMW,BMH),A=new Float32Array(BMW*BMH);for(let i=0;i<A.length;i++)A[i]=id.data[i*4+3];
+  const T=new Float32Array(A.length),R=7;for(let pass=0;pass<3;pass++){
+    for(let y=0;y<BMH;y++){let acc=0;for(let x=-R;x<=R;x++)acc+=A[y*BMW+clamp(x,0,BMW-1)];for(let x=0;x<BMW;x++){T[y*BMW+x]=acc/(2*R+1);acc+=A[y*BMW+Math.min(BMW-1,x+R+1)]-A[y*BMW+Math.max(0,x-R)]}}
+    for(let x=0;x<BMW;x++){let acc=0;for(let y=-R;y<=R;y++)acc+=T[clamp(y,0,BMH-1)*BMW+x];for(let y=0;y<BMH;y++){A[y*BMW+x]=acc/(2*R+1);acc+=T[Math.min(BMH-1,y+R+1)*BMW+x]-T[Math.max(0,y-R)*BMW+x]}}}
+  for(let i=0;i<A.length;i++){id.data[i*4]=4;id.data[i*4+1]=6;id.data[i*4+2]=4;id.data[i*4+3]=A[i]}g.putImageData(id,0,0);
+  return c}catch(e){return null}}
 function textBlock(s){const size=PHONE?Math.round(11/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
   const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
   const[vl,vr]=visX();let x0=pl.h==='R'?vr-110-bw:pl.h==='C'?(vl+vr-bw)/2-(vr-vl)*0.08:vl+110;x0=clamp(x0+pl.jx,vl+90,Math.max(vl+90,vr-90-bw));
@@ -472,11 +499,9 @@ function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L
   s.layers.forEach(l=>drawImg(IMG[l.n],env(lt,l.s,l.fi,L-l.eo,4),s.push,s.dx,s.dy,prog));
   if(d.pulse)drawImg(IMG[d.pulse],pulseVal(s.pu,lt)*sceneA,s.push,s.dx,s.dy,prog);
   if(d.breathe)drawImg(IMG[d.breathe],pulseVal(s.br,lt)*env(lt,0,1,L,4),s.push,s.dx,s.dy,prog);
-  if(TUNE.darken>0&&k>0.01){if(s.lum===undefined)s.lum=regionLum(IMG[s.base]||IMG[d.base],tb);const dk=clamp((s.lum-0.18)/0.3)*TUNE.darken*k;
-    if(dk>0.01){const bw2=Math.min(tb.plan.w,9999),bh2=(tb.plan.n-1)*tb.plan.lh+tb.size*1.4,cx=tb.x0+bw2/2,cy=tb.y0+bh2/2-tb.size*0.7;
-      const rx=bw2/2+tb.size*5,ry=Math.max(bh2/2+tb.size*5,rx*0.42);ctx.save();ctx.translate(cx,cy);ctx.scale(1,ry/rx);const r=rx;const gr=ctx.createRadialGradient(0,0,0,0,0,r);
-      gr.addColorStop(0,'rgba(4,6,4,'+(0.7*dk)+')');gr.addColorStop(0.45,'rgba(4,6,4,'+(0.5*dk)+')');gr.addColorStop(0.75,'rgba(4,6,4,'+(0.2*dk)+')');gr.addColorStop(1,'rgba(4,6,4,0)');ctx.fillStyle=gr;ctx.fillRect(-r,-r,2*r,2*r);ctx.restore()}}
-  drawText(tb.plan,tb.x0,tb.y0,tb.size,{t:lt,dec:s.text.dec,fadeIn:[s.text.s,s.text.fi],fadeOut:[s.text.fo,s.text.fol],float:1.6,alpha:0.95*env(lt,0,1,L,2)});
+  if(TUNE.darken>0&&k>0.01){if(!s.burn)s.burn=burnMask(IMG[s.base]||IMG[d.base],tb,s.text.key);
+    if(s.burn){ctx.save();ctx.globalAlpha=Math.min(1,k*TUNE.darken/0.6);ctx.drawImage(s.burn,0,0,W,H);ctx.restore()}}
+  drawText(tb.plan,tb.x0,tb.y0,tb.size,{t:lt,dec:s.text.dec,fadeIn:[s.text.s,s.text.fi],fadeOut:[s.text.fo,s.text.fol],float:1.6,solid:k,alpha:(0.95+0.05*k*TUNE.solid)*env(lt,0,1,L,2)});
   ctx.restore()}
 let flick=0,flickT=0,gi=0,grainT=0,gox=0,goy=0,dustT=0,dust=[],scratch=null,rainT=0,rainL=[];
 function moodAt(t){const m=P.mood;let w=m.warm,b=m.bright;for(const s of P.scenes){const e=env(t-s.start,0,4,s.len,4);w+=s.mood.warm*e;b+=s.mood.bright*e}return{w,b,h:m.haze}}
