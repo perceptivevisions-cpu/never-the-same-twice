@@ -115,7 +115,7 @@
 const W=1920,H=1080,INK=[232,228,216];
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const TEST=/test/.test(location.hash);
-const BUILD='r9 · 13 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
+const BUILD='r10 · 13 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
 window.addEventListener('error',e=>log('ERR '+(e.message||'')+' @'+(e.lineno||'')));window.addEventListener('unhandledrejection',e=>log('REJ '+((e.reason&&(e.reason.name||e.reason.message))||e.reason)));
 
 // ---------------- tunable look (sliders: add #tune to the address) ----------------
@@ -479,7 +479,8 @@ function burnMask(img,tb,key){if(!img)return null;try{lumX.clearRect(0,0,192,108
   const T=new Float32Array(A.length),R=7;for(let pass=0;pass<3;pass++){
     for(let y=0;y<BMH;y++){let acc=0;for(let x=-R;x<=R;x++)acc+=A[y*BMW+clamp(x,0,BMW-1)];for(let x=0;x<BMW;x++){T[y*BMW+x]=acc/(2*R+1);acc+=A[y*BMW+Math.min(BMW-1,x+R+1)]-A[y*BMW+Math.max(0,x-R)]}}
     for(let x=0;x<BMW;x++){let acc=0;for(let y=-R;y<=R;y++)acc+=T[clamp(y,0,BMH-1)*BMW+x];for(let y=0;y<BMH;y++){A[y*BMW+x]=acc/(2*R+1);acc+=T[Math.min(BMH-1,y+R+1)*BMW+x]-T[Math.max(0,y-R)*BMW+x]}}}
-  for(let i=0;i<A.length;i++){id.data[i*4]=4;id.data[i*4+1]=6;id.data[i*4+2]=4;id.data[i*4+3]=A[i]}g.putImageData(id,0,0);
+  let x0=BMW,y0=BMH,x1=-1,y1=-1;for(let i=0;i<A.length;i++){id.data[i*4]=4;id.data[i*4+1]=6;id.data[i*4+2]=4;id.data[i*4+3]=A[i];if(A[i]>=1){const x=i%BMW,y=(i/BMW)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}g.putImageData(id,0,0);
+  c.bb=x1>=0?{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1}:null; // only the area that has any burn gets drawn; dark scenes draw nothing
   return c}catch(e){return null}}
 function textBlock(s){const size=PHONE?Math.round(11/dispScale()):effSize(TUNE.textSize,9),mw=PHONE?Math.round(700*size/20):Math.min(1700,Math.round(760*size/18));const plan=glyphPlan(s.text.key,s.text.str,size,'left',mw,s.text.rnd);
   const pl=s.place||{h:'L',v:'low',jx:0,jy:0},bw=Math.min(plan.w,mw),bh=(plan.n-1)*plan.lh,vB=visBottom(),vT=1080-vB;
@@ -502,8 +503,8 @@ function drawScene(s,t){let lt=t-s.start;if(lt<-0.1||lt>s.len+0.1)return;const L
   s.layers.forEach(l=>drawImg(IMG[l.n],env(lt,l.s,l.fi,L-l.eo,4),s.push,s.dx,s.dy,prog));
   if(d.pulse)drawImg(IMG[d.pulse],pulseVal(s.pu,lt)*sceneA,s.push,s.dx,s.dy,prog);
   if(d.breathe)drawImg(IMG[d.breathe],pulseVal(s.br,lt)*env(lt,0,1,L,4),s.push,s.dx,s.dy,prog);
-  if(TUNE.darken>0&&k>0.01){if(!s.burn)s.burn=burnMask(IMG[s.base]||IMG[d.base],tb,s.text.key);
-    if(s.burn){ctx.save();ctx.globalAlpha=Math.min(1,k*TUNE.darken/0.6);ctx.drawImage(s.burn,0,0,W,H);ctx.restore()}}
+  const bk=tb.x0+','+tb.y0+','+tb.size;if(lt>0&&s.burnKey!==bk){s.burnKey=bk;s.burn=burnMask(IMG[s.base]||IMG[d.base],tb,s.text.key)} // made early in the scene, not at the push; remade only if the layout changes (rotate, full screen)
+  if(TUNE.darken>0&&k>0.01&&s.burn&&s.burn.bb){const b=s.burn.bb,f=W/BMW;ctx.save();ctx.globalAlpha=Math.min(1,k*TUNE.darken/0.6);ctx.drawImage(s.burn,b.x,b.y,b.w,b.h,b.x*f,b.y*f,b.w*f,b.h*f);ctx.restore()}
   drawText(tb.plan,tb.x0,tb.y0,tb.size,{t:lt,dec:s.text.dec,fadeIn:[s.text.s,s.text.fi],fadeOut:[s.text.fo,s.text.fol],float:1.6,solid:k,alpha:(0.95+0.05*k*TUNE.solid)*env(lt,0,1,L,2)});
   ctx.restore()}
 let flick=0,flickT=0,gi=0,grainT=0,gox=0,goy=0,dustT=0,dust=[],scratch=null,rainT=0,rainL=[];
