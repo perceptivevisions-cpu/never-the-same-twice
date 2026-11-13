@@ -115,7 +115,7 @@
 const W=1920,H=1080,INK=[232,228,216];
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const TEST=/test/.test(location.hash);
-const BUILD='r8 · 13 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
+const BUILD='r9 · 13 Nov';const LOG=[];const log=m=>{try{LOG.push(((performance.now()/1000)|0)+'s '+m);if(LOG.length>40)LOG.shift()}catch(e){}};
 window.addEventListener('error',e=>log('ERR '+(e.message||'')+' @'+(e.lineno||'')));window.addEventListener('unhandledrejection',e=>log('REJ '+((e.reason&&(e.reason.name||e.reason.message))||e.reason)));
 
 // ---------------- tunable look (sliders: add #tune to the address) ----------------
@@ -341,7 +341,10 @@ function plan(){
     const ng=ri(1,3);for(let g=0;g<ng;g++)p.ghosts.push({n:pick(poolOf((order[k+1]&&chance(0.2))?order[k+1]:name)),at:t+rr(6,L-6),d:rr(1.6,2.8),pk:rr(0.22,0.45),push:rr(1.02,1.06)});
     if(k<order.length-1&&chance(0.5))p.ghosts.push({n:SC[order[k+1]].base,at:t+L-rr(9,13),d:rr(1.8,2.4),pk:rr(0.25,0.4),push:1.03});
     // memory gap / loop inside some scenes
-    if(chance(0.16))p.gaps.push({at:t+rr(L*0.3,L*0.75),d:rr(1.4,3.2)});
+    // gaps never land while the text is being read (camera push-in through the start of its fade): if it would, move it just before or after the text, or skip it
+    if(chance(0.16)){let ga=rr(L*0.3,L*0.75);const gd=rr(1.4,3.2),ts=pa-0.5,te=fo+1;
+      if(ga+gd>ts&&ga<te){ga=te+0.5<=L-6-gd?te+0.5:ts-gd>=6?ts-gd:-1}
+      if(ga>=0)p.gaps.push({at:t+ga,d:gd})}
     if(chance(0.14))s.loop={at:rr(L*0.3,L*0.7),back:rr(2.5,5),d:rr(2,4)};
     p.scenes.push(s);t+=L-(ov[k+1]??0);
   });
